@@ -3,7 +3,7 @@ import 'package:hydroponic_app/screens/dashboard.dart';
 import 'screens/splashScreen.dart';
 import 'screens/signup.dart';
 import 'screens/forgotpass.dart';
-
+import 'screens/sensor_monitoring.dart';
 
 void main() {
   runApp(const MyApp());
@@ -42,8 +42,11 @@ class MyApp extends StatelessWidget {
         // Route for the Forgot Password screen
         '/forgot_password': (context) => const Forgotpass(),
 
-       // Route for the Forgot DashBoard screen
-       '/dashboard': (context) => const DashboardScreen(),
+        // Route for the Forgot DashBoard screen
+        '/dashboard': (context) => const DashboardScreen(),
+
+        // Route for the Sensor Monitoring screen
+        '/sensor_monitoring': (context) => const SensorMonitoringScreen(),
       },
     );
   }

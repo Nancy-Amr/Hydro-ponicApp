@@ -146,7 +146,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
+              //Adding a gap
+              _gap(height: 24),
             ],
+            // 5. Navigation Button to Sensor Monitoring Screen
+            _gap(height: 24),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/sensor_monitoring');
+                },
+                icon: const Icon(Icons.sensors),
+                label: const Text('Go to Sensor Monitoring'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  backgroundColor: primaryGreen,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -271,7 +292,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               size: 30,
               color: isActive ? primaryGreen : Colors.red.shade400,
             ),
-            _gap(height: 0, width: 16), 
+            _gap(height: 0, width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
