@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hydroponic_app/screens/dashboard.dart';
+import 'screens/dashboard.dart';
 import 'screens/splashScreen.dart';
 import 'screens/signup.dart';
 import 'screens/forgotpass.dart';
