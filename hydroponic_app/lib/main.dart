@@ -5,6 +5,7 @@ import 'screens/signup.dart';
 import 'screens/forgotpass.dart';
 import 'screens/sensor_monitoring.dart';
 import 'screens/settings.dart';
+import 'screens/alertsAndNotifications.dart';
 
 void main() {
   runApp(const MyApp());
@@ -51,6 +52,9 @@ class MyApp extends StatelessWidget {
 
         // Route for the Settings screen
         '/settings': (context) => const SettingsScreen(),
+
+        // Route for the Alerts and Notifications screen
+        '/alertsAndNotifications': (context) => const AlertsScreen(),
       },
     );
   }

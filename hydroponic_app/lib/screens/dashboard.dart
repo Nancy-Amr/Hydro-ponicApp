@@ -66,6 +66,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                  Navigator.pushNamed(context, '/settings');
          },
   ),
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.pushNamed(context, '/alertsAndNotifications');
+            },
+          ),
 ],
       ),
       body: SingleChildScrollView(
