@@ -120,6 +120,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {},
+        ),
         title: const Text("Alerts & Notifications"),
         centerTitle: true,
         backgroundColor: Colors.green.shade700,
