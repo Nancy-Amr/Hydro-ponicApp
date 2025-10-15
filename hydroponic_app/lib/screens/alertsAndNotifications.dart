@@ -132,7 +132,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
         children: [
           // Filter Row
           Container(
-            color: Colors.green.shade50,
+            color: const Color.fromARGB(255, 227, 242, 228),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
