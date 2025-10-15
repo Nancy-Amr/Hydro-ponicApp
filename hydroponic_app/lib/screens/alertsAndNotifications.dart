@@ -7,116 +7,317 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Alerts Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const AlertsScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
+class AlertItem {
+  final String id;
   final String title;
+  final String message;
+  final String severity;
+  final String time;
+  final String date;
+  bool isRead;
 
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  AlertItem({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.severity,
+    required this.time,
+    required this.date,
+    this.isRead = false,
+  });
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class AlertsScreen extends StatefulWidget {
+  const AlertsScreen({super.key});
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  State<AlertsScreen> createState() => _AlertsScreenState();
+}
+
+class _AlertsScreenState extends State<AlertsScreen> {
+  String selectedFilter = "All";
+  String searchQuery = '';
+
+  // Sample alert data (typed)
+  final List<AlertItem> alerts = [
+    AlertItem(
+      id: 'a1',
+      title: "High pH detected",
+      message: "pH level 7.8 exceeded safe range.",
+      severity: "Critical",
+      time: "14:32",
+      date: "Today",
+      isRead: false,
+    ),
+    AlertItem(
+      id: 'a2',
+      title: "Low water level",
+      message: "Reservoir water below 30%.",
+      severity: "Warning",
+      time: "12:50",
+      date: "Today",
+      isRead: false,
+    ),
+    AlertItem(
+      id: 'a3',
+      title: "Light sensor offline",
+      message: "LDR sensor not responding.",
+      severity: "Info",
+      time: "Yesterday",
+      date: "Yesterday",
+      isRead: true,
+    ),
+  ];
+
+  // Filter + search logic
+  List<AlertItem> get filteredAlerts {
+    final query = searchQuery.trim().toLowerCase();
+
+    // first apply severity filter
+    final severityFiltered = selectedFilter == "All"
+        ? alerts
+        : alerts.where((a) => a.severity == selectedFilter).toList();
+
+    // then apply search (if any)
+    if (query.isEmpty) return severityFiltered;
+
+    return severityFiltered.where((a) {
+      return a.title.toLowerCase().contains(query) ||
+          a.message.toLowerCase().contains(query) ||
+          a.severity.toLowerCase().contains(query) ||
+          a.date.toLowerCase().contains(query) ||
+          a.time.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  Color getSeverityColor(String severity) {
+    switch (severity) {
+      case "Critical":
+        return Colors.redAccent;
+      case "Warning":
+        return Colors.orangeAccent;
+      case "Info":
+        return Colors.blueAccent;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text("Alerts & Notifications"),
+        centerTitle: true,
+        backgroundColor: Colors.green.shade700,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: Column(
+        children: [
+          // Filter Row
+          Container(
+            color: Colors.green.shade50,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildFilterButton("All"),
+                _buildFilterButton("Critical"),
+                _buildFilterButton("Warning"),
+                _buildFilterButton("Info"),
+              ],
             ),
-          ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Search alerts...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      isDense: true,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        searchQuery = value;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Clear Visible Alerts',
+                  onPressed: () {
+                    final visible = filteredAlerts;
+                    if (visible.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No alerts to delete')),
+                      );
+                      return;
+                    }
+                    final idsToRemove = visible.map((a) => a.id).toSet();
+                    setState(() {
+                      alerts.removeWhere((a) => idsToRemove.contains(a.id));
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Deleted ${idsToRemove.length} visible alert(s)',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          // Alerts List
+          Expanded(
+            child: filteredAlerts.isEmpty
+                ? Center(
+                    child: Text(
+                      alerts.isEmpty
+                          ? "No alerts available"
+                          : "No matching alerts",
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(10),
+                    itemCount: filteredAlerts.length,
+                    itemBuilder: (context, index) {
+                      final alert = filteredAlerts[index];
+                      return Dismissible(
+                        key: ValueKey(alert.id),
+                        background: Container(
+                          color: Colors.green,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(Icons.check, color: Colors.white),
+                        ),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (direction) {
+                          // remove from the master list by id
+                          setState(() {
+                            alerts.removeWhere((a) => a.id == alert.id);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('${alert.title} dismissed')),
+                          );
+                        },
+                        child: Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: getSeverityColor(alert.severity),
+                              child: Icon(
+                                alert.severity == "Critical"
+                                    ? Icons.error
+                                    : alert.severity == "Warning"
+                                    ? Icons.warning
+                                    : Icons.info_outline,
+                                color: Colors.white,
+                              ),
+                            ),
+                            title: Text(
+                              alert.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: alert.isRead
+                                    ? Colors.grey.shade600
+                                    : Colors.black,
+                              ),
+                            ),
+                            subtitle: Text(alert.message),
+                            trailing: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  alert.time,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  alert.date,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              setState(() {
+                                alert.isRead = true;
+                              });
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(alert.title),
+                                  content: Text(alert.message),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(),
+                                      child: const Text('Close'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Custom filter button widget
+  Widget _buildFilterButton(String label) {
+    final isSelected = selectedFilter == label;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedFilter = label;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.green.shade600 : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.green.shade700),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.green.shade700,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
