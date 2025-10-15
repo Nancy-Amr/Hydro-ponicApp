@@ -60,9 +60,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          // User profile or settings
-          IconButton(onPressed: () {}, icon: const Icon(Icons.settings)),
-        ],
+            IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () {
+                 Navigator.pushNamed(context, '/settings');
+         },
+  ),
+],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
