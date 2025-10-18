@@ -178,6 +178,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
+            _gap(height: 16),
+Center(
+  child: ElevatedButton.icon(
+    onPressed: () {
+      Navigator.pushNamed(context, '/control_panel');
+    },
+    icon: const Icon(Icons.settings_remote),
+    label: const Text('Go to Control Panel'),
+    style: ElevatedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 24,
+        vertical: 12,
+      ),
+      backgroundColor: Colors.lightBlue.shade400,
+      foregroundColor: Colors.white,
+    ),
+  ),
+),
+
           ],
         ),
       ),
@@ -358,6 +377,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             elevation: 4,
           ),
         ),
+
       ),
     );
   }

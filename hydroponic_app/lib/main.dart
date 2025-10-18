@@ -6,6 +6,7 @@ import 'screens/forgotpass.dart';
 import 'screens/sensor_monitoring.dart';
 import 'screens/settings.dart';
 import 'screens/alertsAndNotifications.dart';
+import 'screens/control_panel.dart';
 
 void main() {
   runApp(const MyApp());
@@ -55,6 +56,9 @@ class MyApp extends StatelessWidget {
 
         // Route for the Alerts and Notifications screen
         '/alertsAndNotifications': (context) => const AlertsScreen(),
+
+        // Route for the Control Panel screen
+        '/control_panel': (context) => const ControlPanelScreen(),
       },
     );
   }
