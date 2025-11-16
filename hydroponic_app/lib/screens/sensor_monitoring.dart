@@ -1,7 +1,7 @@
 //import for material design widgets like Scaffold,AppBar, ListTile,FloatingActionButton,etc
 import 'package:flutter/material.dart';
 
-//stateful widget used because the screen has mutable stste (autoRefresh toggles )
+//stateful widget used because the screen has mutable state (autoRefresh toggles )
 class SensorMonitoringScreen extends StatefulWidget {
   const SensorMonitoringScreen({super.key});
 
@@ -21,6 +21,15 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
 
   //controls whether the refresh icon is filled or outlined
   bool autoRefresh = true;
+
+  //Map sensor names to icons
+  final Map<String, IconData> sensorIcons = {
+    'Temperature': Icons.thermostat,
+    'Humidity': Icons.water_drop,
+    'PH Level': Icons.science,
+    'Water Level': Icons.waves,
+    'Light Intensity': Icons.light_mode,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +58,11 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
               margin: const EdgeInsets.symmetric(vertical: 8),
               //ListTile displays each sensor's name , value , and status icon
               child: ListTile(
-                leading: const Icon(Icons.sensors),
+                leading: Icon(
+                  sensorIcons[entry.key] ?? Icons.sensors,
+                  color: Colors.blue,
+                  size: 30,
+                ),
                 title: Text(entry.key),
                 subtitle: Text('Current Value: ${entry.value}'),
                 trailing: const Icon(Icons.check_circle, color: Colors.green),
