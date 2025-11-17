@@ -7,6 +7,7 @@ import 'screens/sensor_monitoring.dart';
 import 'screens/settings.dart';
 import 'screens/alertsAndNotifications.dart';
 import 'screens/control_panel.dart';
+import 'screens/history.dart';
 
 void main() {
   runApp(const MyApp());
@@ -59,6 +60,8 @@ class MyApp extends StatelessWidget {
 
         // Route for the Control Panel screen
         '/control_panel': (context) => const ControlPanelScreen(),
+        // Route for the History screen
+        '/history': (context) => const HistoryScreen(),
       },
     );
   }

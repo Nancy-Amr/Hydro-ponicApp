@@ -60,19 +60,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-            IconButton(
-                icon: const Icon(Icons.settings),
-                onPressed: () {
-                 Navigator.pushNamed(context, '/settings');
-         },
-  ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.pushNamed(context, '/settings');
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
               Navigator.pushNamed(context, '/alertsAndNotifications');
             },
           ),
-],
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -179,24 +179,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             _gap(height: 16),
-Center(
-  child: ElevatedButton.icon(
-    onPressed: () {
-      Navigator.pushNamed(context, '/control_panel');
-    },
-    icon: const Icon(Icons.settings_remote),
-    label: const Text('Go to Control Panel'),
-    style: ElevatedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 24,
-        vertical: 12,
-      ),
-      backgroundColor: Colors.lightBlue.shade400,
-      foregroundColor: Colors.white,
-    ),
-  ),
-),
-
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/control_panel');
+                },
+                icon: const Icon(Icons.settings_remote),
+                label: const Text('Go to Control Panel'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  backgroundColor: Colors.lightBlue.shade400,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            _gap(height: 16),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/history');
+                },
+                icon: const Icon(Icons.history),
+                label: const Text('View History'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -377,7 +394,6 @@ Center(
             elevation: 4,
           ),
         ),
-
       ),
     );
   }
