@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "576481484943",
+    "project_id": "hydroponicapp-29164",
+    "storage_bucket": "hydroponicapp-29164.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:576481484943:android:113a97a7f9b68031d1d0fa",
+        "android_client_info": {
+          "package_name": "com.example.hydroponic_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeRPowGAcGAHm33xQJLCewk4c-FpRDeUY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
