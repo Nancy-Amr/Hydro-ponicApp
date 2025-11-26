@@ -78,10 +78,11 @@ class DatabaseHelper {
     ''');
 
     // Insert default actuator status
-    await _insertDefaultData(db);
+    await insertDefaultData(db); // Changed to public method
   }
 
-  Future<void> _insertDefaultData(Database db) async {
+  // Changed from private to public
+  Future<void> insertDefaultData(Database db) async {
     // Default actuator states
     final actuators = [
       {'name': 'water_pump', 'state': 'OFF'},
@@ -157,9 +158,7 @@ class DatabaseHelper {
         'value': '40000.0',
         'type': 'double',
         'desc': 'Minimum light intensity threshold (lux)',
-      },
-
-      {
+      },{
         'key': 'auto_mode',
         'value': 'true',
         'type': 'bool',

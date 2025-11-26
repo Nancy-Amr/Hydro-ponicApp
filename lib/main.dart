@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'screens/dashboard.dart';
 import 'screens/splashScreen.dart';
 import 'screens/signup.dart';
@@ -8,6 +9,7 @@ import 'screens/sensor_monitoring.dart';
 import 'screens/settings.dart';
 import 'screens/alertsAndNotifications.dart';
 import 'screens/control_panel.dart';
+import 'providers/hydroponic_provider.dart';
 
 // If you used `flutterfire configure` and have firebase_options.dart, uncomment below:
 // import 'firebase_options.dart';
@@ -32,26 +34,39 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color primaryGreen = Colors.green.shade700;
 
-    return MaterialApp(
-      title: 'Hydroponic App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryGreen,
-          primary: primaryGreen,
+    return MultiProvider(
+      providers: [
+        // Provider will be created when first accessed (lazy loading)
+        ChangeNotifierProvider(
+          create: (context) => HydroponicProvider(),
+          lazy: true,
         ),
-        useMaterial3: true,
+      ],
+      child: MaterialApp(
+        title: 'SMART Hydroponic',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: primaryGreen,
+            primary: primaryGreen,
+          ),
+          useMaterial3: true,
+        ),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const Splashscreen(),
+          '/signup': (context) => const SignUpScreen(),
+          '/forgot_password': (context) => const Forgotpass(),
+          '/dashboard': (context) => Provider<HydroponicProvider>(
+            create: (context) => HydroponicProvider()..loadAllData(),
+            child: const DashboardScreen(),
+          ),
+          '/sensor_monitoring': (context) => const SensorMonitoringScreen(),
+          '/settings': (context) => const SettingsScreen(),
+          '/alertsAndNotifications': (context) => const AlertsScreen(),
+          '/control_panel': (context) => const ControlPanelScreen(),
+        },
+        debugShowCheckedModeBanner: false,
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const Splashscreen(),
-        '/signup': (context) => const SignUpScreen(),
-        '/forgot_password': (context) => const Forgotpass(),
-        '/dashboard': (context) => const DashboardScreen(),
-        '/sensor_monitoring': (context) => const SensorMonitoringScreen(),
-        '/settings': (context) => const SettingsScreen(),
-        '/alertsAndNotifications': (context) => const AlertsScreen(),
-        '/control_panel': (context) => const ControlPanelScreen(),
-      },
     );
   }
 }
