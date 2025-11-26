@@ -1,7 +1,7 @@
-//import for material design widgets like Scaffold,AppBar, ListTile,FloatingActionButton,etc
+//import for material design widgets like Scaffold, AppBar, ListTile, FloatingActionButton, etc
 import 'package:flutter/material.dart';
 
-//stateful widget used because the screen has mutable stste (autoRefresh toggles )
+//stateful widget used because the screen has mutable state (autoRefresh toggles)
 class SensorMonitoringScreen extends StatefulWidget {
   const SensorMonitoringScreen({super.key});
 
@@ -22,6 +22,15 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
   //controls whether the refresh icon is filled or outlined
   bool autoRefresh = true;
 
+  //Map sensor names to icons
+  final Map<String, IconData> sensorIcons = {
+    'Temperature': Icons.thermostat,
+    'Humidity': Icons.water_drop,
+    'PH Level': Icons.science,
+    'Water Level': Icons.waves,
+    'Light Intensity': Icons.light_mode,
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,18 +50,46 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        // ListView Scorallable list of sensor cards
-        child: ListView(
+        // GridView for a more visual dashboard
+        child: GridView.count(
+          crossAxisCount: 2, //two cards per row
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
           children: sensorData.entries.map((entry) {
             return Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              //ListTile displays each sensor's name , value , and status icon
-              child: ListTile(
-                leading: const Icon(Icons.sensors),
-                title: Text(entry.key),
-                subtitle: Text('Current Value: ${entry.value}'),
-                trailing: const Icon(Icons.check_circle, color: Colors.green),
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      sensorIcons[entry.key] ?? Icons.sensors,
+                      color: Colors.blue,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      entry.key,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Current Value: ${entry.value}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             );
           }).toList(),

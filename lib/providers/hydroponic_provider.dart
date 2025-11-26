@@ -41,17 +41,24 @@ class HydroponicProvider with ChangeNotifier {
   SensorReading? getLatestHumidity() => _getLatestReading('humidity');
   SensorReading? getLatestPH() => _getLatestReading('ph');
   SensorReading? getLatestWaterLevel() => _getLatestReading('water_level');
-  SensorReading? getLatestLightIntensity() => _getLatestReading('light_intensity');
+  SensorReading? getLatestLightIntensity() =>
+      _getLatestReading('light_intensity');
 
   // Get sensor history for charts
-  Future<List<SensorReading>> getTemperatureHistory() => _sensorDao.getChartData('temperature');
-  Future<List<SensorReading>> getHumidityHistory() => _sensorDao.getChartData('humidity');
+  Future<List<SensorReading>> getTemperatureHistory() =>
+      _sensorDao.getChartData('temperature');
+  Future<List<SensorReading>> getHumidityHistory() =>
+      _sensorDao.getChartData('humidity');
   Future<List<SensorReading>> getPHHistory() => _sensorDao.getChartData('ph');
-  Future<List<SensorReading>> getWaterLevelHistory() => _sensorDao.getChartData('water_level');
-  Future<List<SensorReading>> getLightHistory() => _sensorDao.getChartData('light_intensity');
+  Future<List<SensorReading>> getWaterLevelHistory() =>
+      _sensorDao.getChartData('water_level');
+  Future<List<SensorReading>> getLightHistory() =>
+      _sensorDao.getChartData('light_intensity');
 
   SensorReading? _getLatestReading(String sensorType) {
-    final readings = _sensorReadings.where((r) => r.sensorType == sensorType).toList();
+    final readings = _sensorReadings
+        .where((r) => r.sensorType == sensorType)
+        .toList();
     if (readings.isEmpty) return null;
     readings.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return readings.first;
@@ -77,10 +84,17 @@ class HydroponicProvider with ChangeNotifier {
 
   // === ALERT GETTERS ===
 
-  int get unacknowledgedAlertsCount => _alerts.where((alert) => !alert.acknowledged).length;
-  List<Alert> get highSeverityAlerts => _alerts.where((alert) => alert.isHighSeverity && !alert.acknowledged).toList();
-  List<Alert> get mediumSeverityAlerts => _alerts.where((alert) => alert.isMediumSeverity && !alert.acknowledged).toList();
-  List<Alert> get lowSeverityAlerts => _alerts.where((alert) => alert.isLowSeverity && !alert.acknowledged).toList();
+  int get unacknowledgedAlertsCount =>
+      _alerts.where((alert) => !alert.acknowledged).length;
+  List<Alert> get highSeverityAlerts => _alerts
+      .where((alert) => alert.isHighSeverity && !alert.acknowledged)
+      .toList();
+  List<Alert> get mediumSeverityAlerts => _alerts
+      .where((alert) => alert.isMediumSeverity && !alert.acknowledged)
+      .toList();
+  List<Alert> get lowSeverityAlerts => _alerts
+      .where((alert) => alert.isLowSeverity && !alert.acknowledged)
+      .toList();
 
   // === SETTINGS GETTERS ===
 
@@ -92,8 +106,10 @@ class HydroponicProvider with ChangeNotifier {
   double get phMax => _getSettingAsDouble('ph_max', 6.2);
   double get waterLevelMin => _getSettingAsDouble('water_level_min', 60.0);
   double get waterLevelMax => _getSettingAsDouble('water_level_max', 90.0);
-  double get lightIntensityMin => _getSettingAsDouble('light_intensity_min', 25000.0);
-  double get lightIntensityMax => _getSettingAsDouble('light_intensity_max', 40000.0);
+  double get lightIntensityMin =>
+      _getSettingAsDouble('light_intensity_min', 25000.0);
+  double get lightIntensityMax =>
+      _getSettingAsDouble('light_intensity_max', 40000.0);
 
   double _getSettingAsDouble(String key, double defaultValue) {
     final setting = _settings.firstWhere(
@@ -121,7 +137,7 @@ class HydroponicProvider with ChangeNotifier {
         loadSettings(),
       ]);
       _error = '';
-      
+
       // Check automation rules after loading data
       if (_autoMode) {
         await checkAutomationRules();
@@ -170,7 +186,7 @@ class HydroponicProvider with ChangeNotifier {
   Future<void> loadSettings() async {
     try {
       _settings = await _settingsDao.getAllSettings();
-      
+
       // Update auto mode from settings
       final autoModeSetting = _settings.firstWhere(
         (s) => s.settingKey == 'auto_mode',
@@ -182,7 +198,7 @@ class HydroponicProvider with ChangeNotifier {
         ),
       );
       _autoMode = autoModeSetting.asBool;
-      
+
       notifyListeners();
     } catch (e) {
       _error = 'Failed to load settings: $e';
@@ -197,12 +213,12 @@ class HydroponicProvider with ChangeNotifier {
     try {
       await _sensorDao.insertSensorReading(reading);
       await loadSensorReadings(); // Reload to get updated list
-      
+
       // Check automation rules when new reading arrives
       if (_autoMode) {
         await checkAutomationRulesForSensor(reading);
       }
-      
+
       _error = '';
     } catch (e) {
       _error = 'Failed to add sensor reading: $e';
@@ -225,7 +241,10 @@ class HydroponicProvider with ChangeNotifier {
   }
 
   // Get chart data for a sensor type
-  Future<List<SensorReading>> getChartData(String sensorType, {int hours = 24}) async {
+  Future<List<SensorReading>> getChartData(
+    String sensorType, {
+    int hours = 24,
+  }) async {
     return await _sensorDao.getChartData(sensorType, hours: hours);
   }
 
@@ -245,7 +264,10 @@ class HydroponicProvider with ChangeNotifier {
   // === ACTUATOR OPERATIONS ===
 
   // Turn actuator ON
-  Future<void> turnOnActuator(String actuatorName, {String mode = 'MANUAL'}) async {
+  Future<void> turnOnActuator(
+    String actuatorName, {
+    String mode = 'MANUAL',
+  }) async {
     try {
       await _actuatorDao.turnOnActuator(actuatorName);
       await _actuatorDao.logActuatorOn(actuatorName, mode);
@@ -258,7 +280,10 @@ class HydroponicProvider with ChangeNotifier {
   }
 
   // Turn actuator OFF
-  Future<void> turnOffActuator(String actuatorName, {String mode = 'MANUAL'}) async {
+  Future<void> turnOffActuator(
+    String actuatorName, {
+    String mode = 'MANUAL',
+  }) async {
     try {
       await _actuatorDao.turnOffActuator(actuatorName);
       await _actuatorDao.logActuatorOff(actuatorName, mode);
@@ -271,7 +296,10 @@ class HydroponicProvider with ChangeNotifier {
   }
 
   // Toggle actuator
-  Future<void> toggleActuator(String actuatorName, {String mode = 'MANUAL'}) async {
+  Future<void> toggleActuator(
+    String actuatorName, {
+    String mode = 'MANUAL',
+  }) async {
     final current = getActuatorByName(actuatorName);
     if (current == null || current.isOn) {
       await turnOffActuator(actuatorName, mode: mode);
@@ -281,17 +309,26 @@ class HydroponicProvider with ChangeNotifier {
   }
 
   // Specific actuator methods
-  Future<void> turnOnWaterPump({String mode = 'MANUAL'}) => turnOnActuator('water_pump', mode: mode);
-  Future<void> turnOffWaterPump({String mode = 'MANUAL'}) => turnOffActuator('water_pump', mode: mode);
-  Future<void> toggleWaterPump({String mode = 'MANUAL'}) => toggleActuator('water_pump', mode: mode);
+  Future<void> turnOnWaterPump({String mode = 'MANUAL'}) =>
+      turnOnActuator('water_pump', mode: mode);
+  Future<void> turnOffWaterPump({String mode = 'MANUAL'}) =>
+      turnOffActuator('water_pump', mode: mode);
+  Future<void> toggleWaterPump({String mode = 'MANUAL'}) =>
+      toggleActuator('water_pump', mode: mode);
 
-  Future<void> turnOnFan({String mode = 'MANUAL'}) => turnOnActuator('fan', mode: mode);
-  Future<void> turnOffFan({String mode = 'MANUAL'}) => turnOffActuator('fan', mode: mode);
-  Future<void> toggleFan({String mode = 'MANUAL'}) => toggleActuator('fan', mode: mode);
+  Future<void> turnOnFan({String mode = 'MANUAL'}) =>
+      turnOnActuator('fan', mode: mode);
+  Future<void> turnOffFan({String mode = 'MANUAL'}) =>
+      turnOffActuator('fan', mode: mode);
+  Future<void> toggleFan({String mode = 'MANUAL'}) =>
+      toggleActuator('fan', mode: mode);
 
-  Future<void> turnOnLight({String mode = 'MANUAL'}) => turnOnActuator('light', mode: mode);
-  Future<void> turnOffLight({String mode = 'MANUAL'}) => turnOffActuator('light', mode: mode);
-  Future<void> toggleLight({String mode = 'MANUAL'}) => toggleActuator('light', mode: mode);
+  Future<void> turnOnLight({String mode = 'MANUAL'}) =>
+      turnOnActuator('light', mode: mode);
+  Future<void> turnOffLight({String mode = 'MANUAL'}) =>
+      turnOffActuator('light', mode: mode);
+  Future<void> toggleLight({String mode = 'MANUAL'}) =>
+      toggleActuator('light', mode: mode);
 
   // Get actuator logs
   Future<List<ActuatorLog>> getActuatorLogs(String actuatorName) async {
@@ -317,18 +354,25 @@ class HydroponicProvider with ChangeNotifier {
   }
 
   // Create alert for sensor threshold violation
-  Future<void> createSensorAlert(String sensorType, double value, String thresholdType) async {
+  Future<void> createSensorAlert(
+    String sensorType,
+    double value,
+    String thresholdType,
+  ) async {
     final severity = thresholdType == 'HIGH' ? 'HIGH' : 'MEDIUM';
-    final message = '$sensorType ${thresholdType.toLowerCase()}: ${value.toStringAsFixed(1)}';
-    
-    await addAlert(Alert(
-      alertType: '${thresholdType}_${sensorType.toUpperCase()}',
-      message: message,
-      severity: severity,
-      sensorType: sensorType,
-      value: value,
-      timestamp: DateTime.now(),
-    ));
+    final message =
+        '$sensorType ${thresholdType.toLowerCase()}: ${value.toStringAsFixed(1)}';
+
+    await addAlert(
+      Alert(
+        alertType: '${thresholdType}_${sensorType.toUpperCase()}',
+        message: message,
+        severity: severity,
+        sensorType: sensorType,
+        value: value,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   // Acknowledge alert
@@ -464,7 +508,8 @@ class HydroponicProvider with ChangeNotifier {
     if (latestTemp != null) await _checkTemperatureRules(latestTemp.value);
     if (latestHumidity != null) await _checkHumidityRules(latestHumidity.value);
     if (latestPH != null) await _checkPHRules(latestPH.value);
-    if (latestWaterLevel != null) await _checkWaterLevelRules(latestWaterLevel.value);
+    if (latestWaterLevel != null)
+      await _checkWaterLevelRules(latestWaterLevel.value);
     if (latestLight != null) await _checkLightIntensityRules(latestLight.value);
   }
 
@@ -531,7 +576,8 @@ class HydroponicProvider with ChangeNotifier {
 
     final now = DateTime.now();
     final hour = now.hour;
-    final isDaytime = hour >= 6 && hour < 22; // 6 AM to 10 PM (16-hour photoperiod)
+    final isDaytime =
+        hour >= 6 && hour < 22; // 6 AM to 10 PM (16-hour photoperiod)
 
     if (isDaytime && !isLightOn()) {
       await turnOnLight(mode: 'AUTOMATIC');
@@ -548,14 +594,16 @@ class HydroponicProvider with ChangeNotifier {
         turnOffFan(mode: 'EMERGENCY'),
         turnOffLight(mode: 'EMERGENCY'),
       ]);
-      
-      await addAlert(Alert(
-        alertType: 'EMERGENCY_STOP',
-        message: 'Emergency stop activated - all systems shut down',
-        severity: 'HIGH',
-        timestamp: DateTime.now(),
-      ));
-      
+
+      await addAlert(
+        Alert(
+          alertType: 'EMERGENCY_STOP',
+          message: 'Emergency stop activated - all systems shut down',
+          severity: 'HIGH',
+          timestamp: DateTime.now(),
+        ),
+      );
+
       _error = 'Emergency stop activated';
       notifyListeners();
     } catch (e) {
@@ -570,11 +618,36 @@ class HydroponicProvider with ChangeNotifier {
   Future<void> simulateSensorData() async {
     final now = DateTime.now();
     final simulatedReadings = [
-      SensorReading(sensorType: 'temperature', value: 24.5 + (DateTime.now().millisecond % 10) / 5, unit: '°C', timestamp: now),
-      SensorReading(sensorType: 'humidity', value: 65.0 + (DateTime.now().millisecond % 20) / 2, unit: '%', timestamp: now),
-      SensorReading(sensorType: 'ph', value: 6.0 + (DateTime.now().millisecond % 10) / 20, unit: 'pH', timestamp: now),
-      SensorReading(sensorType: 'water_level', value: 75.0 + (DateTime.now().millisecond % 30) / 3, unit: '%', timestamp: now),
-      SensorReading(sensorType: 'light_intensity', value: 30000.0 + (DateTime.now().millisecond % 10000), unit: 'lux', timestamp: now),
+      SensorReading(
+        sensorType: 'temperature',
+        value: 24.5 + (DateTime.now().millisecond % 10) / 5,
+        unit: '°C',
+        timestamp: now,
+      ),
+      SensorReading(
+        sensorType: 'humidity',
+        value: 65.0 + (DateTime.now().millisecond % 20) / 2,
+        unit: '%',
+        timestamp: now,
+      ),
+      SensorReading(
+        sensorType: 'ph',
+        value: 6.0 + (DateTime.now().millisecond % 10) / 20,
+        unit: 'pH',
+        timestamp: now,
+      ),
+      SensorReading(
+        sensorType: 'water_level',
+        value: 75.0 + (DateTime.now().millisecond % 30) / 3,
+        unit: '%',
+        timestamp: now,
+      ),
+      SensorReading(
+        sensorType: 'light_intensity',
+        value: 30000.0 + (DateTime.now().millisecond % 10000),
+        unit: 'lux',
+        timestamp: now,
+      ),
     ];
 
     await addMultipleSensorReadings(simulatedReadings);
@@ -607,7 +680,9 @@ class HydroponicProvider with ChangeNotifier {
     return {
       'health': systemHealth,
       'active_alerts': unacknowledgedAlertsCount,
-      'sensors_online': _sensorReadings.length > 0 ? 5 : 0, // Assuming 5 sensors
+      'sensors_online': _sensorReadings.length > 0
+          ? 5
+          : 0, // Assuming 5 sensors
       'actuators_active': _actuatorStatus.where((a) => a.isOn).length,
       'auto_mode': _autoMode,
     };

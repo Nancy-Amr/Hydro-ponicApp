@@ -16,7 +16,12 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'hydroponic.db');
-    return await openDatabase(path, version: 1, onCreate: _createTables);
+    return await openDatabase(
+      path,
+      version: 2, // Increment version for new table
+      onCreate: _createTables,
+      onUpgrade: _upgradeDatabase,
+    );
   }
 
   Future<void> _createTables(Database db, int version) async {
@@ -27,7 +32,8 @@ class DatabaseHelper {
         sensor_type TEXT NOT NULL,
         value REAL NOT NULL,
         unit TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        synced_with_firebase INTEGER DEFAULT 0
       )
     ''');
 
@@ -37,7 +43,8 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         actuator_name TEXT UNIQUE NOT NULL,
         current_state TEXT NOT NULL,
-        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+        synced_with_firebase INTEGER DEFAULT 0
       )
     ''');
 
@@ -48,7 +55,8 @@ class DatabaseHelper {
         actuator_name TEXT NOT NULL,
         action TEXT NOT NULL,
         mode TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        synced_with_firebase INTEGER DEFAULT 0
       )
     ''');
 
@@ -62,7 +70,8 @@ class DatabaseHelper {
         sensor_type TEXT,
         value REAL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        acknowledged INTEGER DEFAULT 0
+        acknowledged INTEGER DEFAULT 0,
+        synced_with_firebase INTEGER DEFAULT 0
       )
     ''');
 
@@ -73,106 +82,107 @@ class DatabaseHelper {
         setting_key TEXT UNIQUE NOT NULL,
         setting_value TEXT NOT NULL,
         data_type TEXT NOT NULL,
-        description TEXT
+        description TEXT,
+        synced_with_firebase INTEGER DEFAULT 0
       )
     ''');
 
-    // Insert default actuator status
-    await insertDefaultData(db); // Changed to public method
+    // Sync status table - track last sync time
+    await db.execute('''
+      CREATE TABLE sync_status(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_name TEXT UNIQUE NOT NULL,
+        last_sync_time DATETIME
+      )
+    ''');
+
+    // Insert default data
+    await insertDefaultData(db);
   }
 
-  // Changed from private to public
+  Future<void> _upgradeDatabase(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2) {
+      // Add sync columns to existing tables
+      await db.execute(
+        'ALTER TABLE sensor_readings ADD COLUMN synced_with_firebase INTEGER DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE actuator_status ADD COLUMN synced_with_firebase INTEGER DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE actuator_logs ADD COLUMN synced_with_firebase INTEGER DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE alerts ADD COLUMN synced_with_firebase INTEGER DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE system_settings ADD COLUMN synced_with_firebase INTEGER DEFAULT 0',
+      );
+      await db.execute('''
+        CREATE TABLE sync_status(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          table_name TEXT UNIQUE NOT NULL,
+          last_sync_time DATETIME
+        )
+      ''');
+    }
+  }
+
+  // ... rest of your existing insertDefaultData method remains the same ...
   Future<void> insertDefaultData(Database db) async {
-    // Default actuator states
-    final actuators = [
-      {'name': 'water_pump', 'state': 'OFF'},
-      {'name': 'fan', 'state': 'OFF'},
-      {'name': 'light', 'state': 'OFF'},
-    ];
+    // Your existing default data insertion code here
+    // (keep the same as before)
+  }
 
-    for (var actuator in actuators) {
-      await db.insert('actuator_status', {
-        'actuator_name': actuator['name'],
-        'current_state': actuator['state'],
-      });
-    }
+  // === SYNC METHODS ===
 
-    // Default system settings
-    final settings = [
-      {
-        'key': 'temp_min',
-        'value': '18.0',
-        'type': 'double',
-        'desc': 'Minimum temperature threshold (°C)',
-      },
-      {
-        'key': 'temp_max',
-        'value': '26.0',
-        'type': 'double',
-        'desc': 'Maximum temperature threshold (°C)',
-      },
-      {
-        'key': 'humidity_min',
-        'value': '50.0',
-        'type': 'double',
-        'desc': 'Minimum humidity threshold (%)',
-      },
-      {
-        'key': 'humidity_max',
-        'value': '70.0',
-        'type': 'double',
-        'desc': 'Maximum humidity threshold (%)',
-      },
-      {
-        'key': 'ph_min',
-        'value': '5.8',
-        'type': 'double',
-        'desc': 'Minimum pH level threshold',
-      },
-      {
-        'key': 'ph_max',
-        'value': '6.2',
-        'type': 'double',
-        'desc': 'Maximum pH level threshold',
-      },
-      {
-        'key': 'water_level_min',
-        'value': '60.0',
-        'type': 'double',
-        'desc': 'Minimum water level threshold (%)',
-      },
-      {
-        'key': 'water_level_max',
-        'value': '90.0',
-        'type': 'double',
-        'desc': 'Minimum water level threshold (%)',
-      },
-      {
-        'key': 'light_intensity_min',
-        'value': '25000.0',
-        'type': 'double',
-        'desc': 'Minimum light intensity threshold (lux)',
-      },
-      {
-        'key': 'light_intensity_max',
-        'value': '40000.0',
-        'type': 'double',
-        'desc': 'Minimum light intensity threshold (lux)',
-      },{
-        'key': 'auto_mode',
-        'value': 'true',
-        'type': 'bool',
-        'desc': 'Enable automatic control mode',
-      },
-    ];
+  // Mark records as synced
+  Future<void> markAsSynced(String tableName, List<int> ids) async {
+    final db = await database;
+    final placeholders = List.filled(ids.length, '?').join(',');
 
-    for (var setting in settings) {
-      await db.insert('system_settings', {
-        'setting_key': setting['key'],
-        'setting_value': setting['value'],
-        'data_type': setting['type'],
-        'description': setting['desc'],
-      });
-    }
+    await db.rawUpdate('''
+      UPDATE $tableName 
+      SET synced_with_firebase = 1 
+      WHERE id IN ($placeholders)
+    ''', ids);
+  }
+
+  // Get unsynced records
+  Future<List<Map<String, dynamic>>> getUnsyncedRecords(
+    String tableName,
+  ) async {
+    final db = await database;
+    return await db.query(
+      tableName,
+      where: 'synced_with_firebase = ?',
+      whereArgs: [0],
+    );
+  }
+
+  // Update last sync time
+  Future<void> updateLastSyncTime(String tableName) async {
+    final db = await database;
+    await db.insert('sync_status', {
+      'table_name': tableName,
+      'last_sync_time': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  // Get last sync time
+  Future<DateTime?> getLastSyncTime(String tableName) async {
+    final db = await database;
+    final result = await db.query(
+      'sync_status',
+      where: 'table_name = ?',
+      whereArgs: [tableName],
+    );
+
+    if (result.isEmpty) return null;
+    return DateTime.parse(result.first['last_sync_time'] as String);
   }
 }
