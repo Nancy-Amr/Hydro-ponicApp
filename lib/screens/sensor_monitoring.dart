@@ -1,5 +1,8 @@
 //import for material design widgets like Scaffold, AppBar, ListTile, FloatingActionButton, etc
 import 'package:flutter/material.dart';
+// NEW: import provider package and HydroponicProvider
+import 'package:provider/provider.dart';
+import '../providers/hydroponic_provider.dart';
 
 //stateful widget used because the screen has mutable state (autoRefresh toggles)
 class SensorMonitoringScreen extends StatefulWidget {
@@ -10,14 +13,8 @@ class SensorMonitoringScreen extends StatefulWidget {
 }
 
 class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
-  // Simulated sensor data (replace with Firebase later)
-  final Map<String, dynamic> sensorData = {
-    'Temperature': '25 °C',
-    'Humidity': '60%',
-    'PH Level': '5.5',
-    'Water Level': 'Normal',
-    'Light Intensity': 'High',
-  };
+  // REMOVED: hardcoded simulated sensorData map
+  // Instead, we now fetch live data from HydroponicProvider
 
   //controls whether the refresh icon is filled or outlined
   bool autoRefresh = true;
@@ -33,6 +30,18 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // NEW: access HydroponicProvider
+    final provider = context.watch<HydroponicProvider>();
+
+    // NEW: build a map of sensor readings from provider
+    final sensors = {
+      'Temperature': provider.getLatestTemperature(),
+      'Humidity': provider.getLatestHumidity(),
+      'PH Level': provider.getLatestPH(),
+      'Water Level': provider.getLatestWaterLevel(),
+      'Light Intensity': provider.getLatestLightIntensity(),
+    };
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sensor Monitoring'),
@@ -44,6 +53,10 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
               setState(() {
                 autoRefresh = !autoRefresh;
               });
+              // NEW: trigger reload of sensor readings when toggled
+              if (autoRefresh) {
+                provider.loadSensorReadings();
+              }
             },
           ),
         ],
@@ -55,7 +68,40 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
           crossAxisCount: 2, //two cards per row
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          children: sensorData.entries.map((entry) {
+          children: sensors.entries.map((entry) {
+            final reading = entry.value;
+            // NEW: threshold check using provider settings
+            bool isCritical = false;
+            if (reading != null) {
+              switch (entry.key) {
+                case 'Temperature':
+                  isCritical =
+                      reading.value < provider.tempMin ||
+                      reading.value > provider.tempMax;
+                  break;
+                case 'Humidity':
+                  isCritical =
+                      reading.value < provider.humidityMin ||
+                      reading.value > provider.humidityMax;
+                  break;
+                case 'PH Level':
+                  isCritical =
+                      reading.value < provider.phMin ||
+                      reading.value > provider.phMax;
+                  break;
+                case 'Water Level':
+                  isCritical =
+                      reading.value < provider.waterLevelMin ||
+                      reading.value > provider.waterLevelMax;
+                  break;
+                case 'Light Intensity':
+                  isCritical =
+                      reading.value < provider.lightIntensityMin ||
+                      reading.value > provider.lightIntensityMax;
+                  break;
+              }
+            }
+
             return Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -68,7 +114,8 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
                   children: [
                     Icon(
                       sensorIcons[entry.key] ?? Icons.sensors,
-                      color: Colors.blue,
+                      // NEW: icon color reflects threshold status
+                      color: isCritical ? Colors.red : Colors.blue,
                       size: 40,
                     ),
                     const SizedBox(height: 10),
@@ -81,7 +128,10 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Current Value: ${entry.value}',
+                      // UPDATED: show live value from provider instead of hardcoded map
+                      reading != null
+                          ? 'Current Value: ${reading.value} ${reading.unit}'
+                          : 'No data',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black87,
@@ -97,10 +147,32 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
       ),
       //A button with both icon and label
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
+        onPressed: () async {
           // SnackBar : Temporary message shown when calibration is triggered
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Calibration Started ...')),
+          );
+
+          // NEW: Example calibration logic — adjust thresholds dynamically
+          // Here we reset thresholds to safe defaults
+          await provider.updateMultipleSettings({
+            'temp_min': '20.0',
+            'temp_max': '25.0',
+            'humidity_min': '55.0',
+            'humidity_max': '65.0',
+            'ph_min': '5.8',
+            'ph_max': '6.2',
+            'water_level_min': '70.0',
+            'water_level_max': '90.0',
+            'light_intensity_min': '25000.0',
+            'light_intensity_max': '40000.0',
+          });
+
+          // NEW: confirmation message after calibration
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Calibration Complete: Thresholds Reset'),
+            ),
           );
         },
         label: const Text('Calibrate Sensors'),
