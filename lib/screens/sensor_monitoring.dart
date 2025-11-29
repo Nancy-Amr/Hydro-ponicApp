@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-// NEW: import provider package and HydroponicProvider
 import 'package:provider/provider.dart';
 import '../providers/hydroponic_provider.dart';
+import '../models/sensor_reading.dart'; // Needed for SensorReading type
+import 'dart:async';
 
 class SensorMonitoringScreen extends StatefulWidget {
   const SensorMonitoringScreen({super.key});
@@ -11,14 +12,12 @@ class SensorMonitoringScreen extends StatefulWidget {
 }
 
 class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
-  // REMOVED: hardcoded simulated sensorData map
-  // Instead, we now fetch live data from HydroponicProvider
-
-  //controls whether the refresh icon is filled or outlined
+  // controls whether the refresh icon is filled or outlined
   bool autoRefresh = true;
   Timer? _refreshTimer;
 
   // Map sensor names to their display info (consistent with Provider getters)
+  // This map already contains the icon data, which we will use directly in the builder.
   final List<Map<String, dynamic>> sensorConfig = [
     {
       'title': 'Temperature',
@@ -72,10 +71,8 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
     });
 
     if (enable) {
-      // In a real app, this timer would trigger a full data fetch,
-      // but here we use it to trigger simulation for demonstration.
+      // Trigger simulation for demonstration
       _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-        // Trigger data update (e.g., simulating a new reading received by Firebase)
         Provider.of<HydroponicProvider>(
           context,
           listen: false,
@@ -91,8 +88,7 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
       _toggleAutoRefresh(false);
     }
 
-    // In a real app, you would call a method to force refresh the Firebase streams/data here.
-    // For now, we'll just trigger one simulation run.
+    // Trigger one simulation run
     await Provider.of<HydroponicProvider>(
       context,
       listen: false,
@@ -107,36 +103,32 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // NEW: access HydroponicProvider
     final provider = context.watch<HydroponicProvider>();
 
-    // NEW: build a map of sensor readings from provider
-    final sensors = {
-      'Temperature': provider.getLatestTemperature(),
-      'Humidity': provider.getLatestHumidity(),
-      'PH Level': provider.getLatestPH(),
-      'Water Level': provider.getLatestWaterLevel(),
-      'Light Intensity': provider.getLatestLightIntensity(),
-    };
+    // Removed: The 'sensors' map which contained the undefined 'sensorIcons'
+    // We now iterate over the sensorConfig list directly.
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sensor Monitoring'),
         actions: [
-          IconButton(
-            icon: Icon(autoRefresh ? Icons.refresh : Icons.refresh_outlined),
-            tooltip: 'Toggle Auto-Refresh',
-            onPressed: () {
-              setState(() {
-                autoRefresh = !autoRefresh;
-              });
-              // NEW: trigger reload of sensor readings when toggled
-              if (autoRefresh) {
-                provider.loadSensorReadings();
-              }
-            },
-          ),
-        ],
+        // FIX: Combine both auto and manual refresh into a single conditional button
+        IconButton(
+          // If autoRefresh is ON, show the filled icon, and tapping turns it OFF.
+          // If autoRefresh is OFF, show a clock icon or a single refresh icon, and tapping performs manual refresh.
+          icon: Icon(autoRefresh ? Icons.refresh : Icons.refresh_sharp),
+          tooltip: autoRefresh ? 'Auto-Refresh ON: Tap to stop' : 'Auto-Refresh OFF: Tap to refresh once',
+          onPressed: () {
+            if (autoRefresh) {
+              // If auto is ON, tap turns it OFF.
+              _toggleAutoRefresh(false);
+            } else {
+              // If auto is OFF, tap performs a manual refresh.
+              _manualRefresh();
+            }
+          },
+        ),
+      ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -145,12 +137,16 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
           crossAxisCount: 2, //two cards per row
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          children: sensors.entries.map((entry) {
-            final reading = entry.value;
+          // FIX: Iterate through sensorConfig list directly
+          children: sensorConfig.map((config) {
+            final reading = config['getter'](provider) as SensorReading?;
+            final String title = config['title'];
+            final IconData icon = config['icon'];
+
             // NEW: threshold check using provider settings
             bool isCritical = false;
             if (reading != null) {
-              switch (entry.key) {
+              switch (title) {
                 case 'Temperature':
                   isCritical =
                       reading.value < provider.tempMin ||
@@ -161,7 +157,7 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
                       reading.value < provider.humidityMin ||
                       reading.value > provider.humidityMax;
                   break;
-                case 'PH Level':
+                case 'pH Level':
                   isCritical =
                       reading.value < provider.phMin ||
                       reading.value > provider.phMax;
@@ -190,14 +186,14 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      sensorIcons[entry.key] ?? Icons.sensors,
+                      icon, // FIX: Use icon from config instead of 'sensorIcons[entry.key]'
                       // NEW: icon color reflects threshold status
                       color: isCritical ? Colors.red : Colors.blue,
                       size: 40,
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      entry.key,
+                      title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -205,9 +201,9 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      // UPDATED: show live value from provider instead of hardcoded map
+                      // UPDATED: show live value from provider
                       reading != null
-                          ? 'Current Value: ${reading.value} ${reading.unit}'
+                          ? 'Current Value: ${reading.value.toStringAsFixed(title == 'pH Level' ? 2 : 1)} ${reading.unit}'
                           : 'No data',
                       style: const TextStyle(
                         fontSize: 14,
@@ -230,8 +226,7 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
             const SnackBar(content: Text('Calibration Started ...')),
           );
 
-          // NEW: Example calibration logic — adjust thresholds dynamically
-          // Here we reset thresholds to safe defaults
+          // Example calibration logic — adjust thresholds dynamically
           await provider.updateMultipleSettings({
             'temp_min': '20.0',
             'temp_max': '25.0',
@@ -245,10 +240,10 @@ class _SensorMonitoringScreenState extends State<SensorMonitoringScreen> {
             'light_intensity_max': '40000.0',
           });
 
-          // NEW: confirmation message after calibration
+          // confirmation message after calibration
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Calibration Complete: Thresholds Reset'),
+              content: Text('Calibration Complete: Thresholds Updated'),
             ),
           );
         },
