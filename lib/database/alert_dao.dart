@@ -1,19 +1,16 @@
-
 import '../models/alert.dart';
 import 'database_helper.dart';
-
-
-
+import 'package:sqflite/sqflite.dart';
 class AlertDao {
   final DatabaseHelper dbHelper = DatabaseHelper();
 
-  // Create a new alert
+  // Insert a new alert
   Future<int> insertAlert(Alert alert) async {
     final db = await dbHelper.database;
     return await db.insert('alerts', alert.toMap());
   }
 
-  // Get all alerts (latest first)
+  // Get all alerts
   Future<List<Alert>> getAllAlerts() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -23,34 +20,10 @@ class AlertDao {
     return List.generate(maps.length, (i) => Alert.fromMap(maps[i]));
   }
 
-  // Get unacknowledged alerts only
-  Future<List<Alert>> getUnacknowledgedAlerts() async {
+  // Acknowledge alert
+  Future<void> acknowledgeAlert(int alertId) async {
     final db = await dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'alerts',
-      where: 'acknowledged = ?',
-      whereArgs: [0],
-      orderBy: 'timestamp DESC',
-    );
-    return List.generate(maps.length, (i) => Alert.fromMap(maps[i]));
-  }
-
-  // Get alerts by severity
-  Future<List<Alert>> getAlertsBySeverity(String severity) async {
-    final db = await dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'alerts',
-      where: 'severity = ?',
-      whereArgs: [severity],
-      orderBy: 'timestamp DESC',
-    );
-    return List.generate(maps.length, (i) => Alert.fromMap(maps[i]));
-  }
-
-  // Mark alert as acknowledged
-  Future<int> acknowledgeAlert(int alertId) async {
-    final db = await dbHelper.database;
-    return await db.update(
+    await db.update(
       'alerts',
       {'acknowledged': 1},
       where: 'id = ?',
@@ -58,53 +31,65 @@ class AlertDao {
     );
   }
 
-  // Mark all alerts as acknowledged
-  Future<int> acknowledgeAllAlerts() async {
+  // Acknowledge all alerts
+  Future<void> acknowledgeAllAlerts() async {
     final db = await dbHelper.database;
-    return await db.update(
+    await db.update(
       'alerts',
       {'acknowledged': 1},
     );
   }
 
-  // Delete a specific alert
-  Future<int> deleteAlert(int alertId) async {
+  // Get unsynced alerts
+  Future<List<Alert>> getUnsyncedAlerts() async {
     final db = await dbHelper.database;
-    return await db.delete(
+    final List<Map<String, dynamic>> maps = await db.query(
       'alerts',
+      where: 'synced_with_firebase = ? OR synced_with_firebase IS NULL',
+    );
+    return List.generate(maps.length, (i) => Alert.fromMap(maps[i]));
+  }
+
+  // Mark alert as synced
+  Future<void> markAsSynced(int id) async {
+    final db = await dbHelper.database;
+    await db.update(
+      'alerts',
+      {'synced_with_firebase': 1},
       where: 'id = ?',
-      whereArgs: [alertId],
+      whereArgs: [id],
     );
   }
 
-  // Delete old acknowledged alerts (keep last 30 days)
-  Future<int> deleteOldAlerts({int daysToKeep = 30}) async {
+  // Get last sync time
+  Future<DateTime?> getLastSyncTime() async {
     final db = await dbHelper.database;
-    final cutoffDate = DateTime.now().subtract(Duration(days: daysToKeep));
-    
-    return await db.delete(
-      'alerts',
-      where: 'acknowledged = 1 AND timestamp < ?',
-      whereArgs: [cutoffDate.toIso8601String()],
-    );
-  }
-
-  // Get alert statistics
-  Future<Map<String, int>> getAlertStats() async {
-    final db = await dbHelper.database;
-    
-    final result = await db.rawQuery('''
-      SELECT severity, COUNT(*) as count 
-      FROM alerts 
-      WHERE acknowledged = 0 
-      GROUP BY severity
-    ''');
-    
-    final stats = <String, int>{};
-    for (final map in result) {
-      stats[map['severity'] as String] = map['count'] as int;
+    try {
+      final result = await db.query(
+        'sync_status',
+        where: 'table_name = ?',
+        whereArgs: ['alerts'],
+      );
+      
+      if (result.isEmpty) return null;
+      return DateTime.parse(result.first['last_sync_time'] as String);
+    } catch (e) {
+      return null;
     }
+  }
+
+  // Update last sync time
+  Future<void> updateLastSyncTime() async {
+    final db = await dbHelper.database;
+    final now = DateTime.now().toIso8601String();
     
-    return stats;
+    await db.insert(
+      'sync_status',
+      {
+        'table_name': 'alerts',
+        'last_sync_time': now,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 }

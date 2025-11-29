@@ -5,9 +5,7 @@ import '../database/alert_dao.dart';
 import '../database/settings_dao.dart';
 import 'firebase_service.dart';
 import '../models/sensor_reading.dart';
-import '../models/actuator_status.dart';
 import '../models/alert.dart';
-import '../models/system_setting.dart';
 
 class SyncService {
   final DatabaseHelper _dbHelper = DatabaseHelper();

@@ -1,5 +1,6 @@
 import '../models/sensor_reading.dart';
 import 'database_helper.dart';
+import 'package:sqflite/sqflite.dart';
 
 class SensorDao {
   final DatabaseHelper dbHelper = DatabaseHelper();
@@ -72,10 +73,63 @@ class SensorDao {
     );
   }
 
-  // Get readings count for statistics - FIXED (now has import)
-   Future<int> getReadingsCount() async {
+  // Get readings count for statistics
+  Future<int> getReadingsCount() async {
     final db = await dbHelper.database;
     final result = await db.rawQuery('SELECT COUNT(*) as count FROM sensor_readings');
     return result.first['count'] as int? ?? 0;
+  }
+
+  // Get unsynced readings
+  Future<List<SensorReading>> getUnsyncedReadings() async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'sensor_readings',
+      where: 'synced_with_firebase = ? OR synced_with_firebase IS NULL',
+    );
+    return List.generate(maps.length, (i) => SensorReading.fromMap(maps[i]));
+  }
+
+  // Mark reading as synced
+  Future<void> markAsSynced(int id) async {
+    final db = await dbHelper.database;
+    await db.update(
+      'sensor_readings',
+      {'synced_with_firebase': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Get last sync time
+  Future<DateTime?> getLastSyncTime() async {
+    final db = await dbHelper.database;
+    try {
+      final result = await db.query(
+        'sync_status',
+        where: 'table_name = ?',
+        whereArgs: ['sensor_readings'],
+      );
+      
+      if (result.isEmpty) return null;
+      return DateTime.parse(result.first['last_sync_time'] as String);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Update last sync time
+  Future<void> updateLastSyncTime() async {
+    final db = await dbHelper.database;
+    final now = DateTime.now().toIso8601String();
+    
+    await db.insert(
+      'sync_status',
+      {
+        'table_name': 'sensor_readings',
+        'last_sync_time': now,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 }

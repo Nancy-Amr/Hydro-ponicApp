@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/hydroponic_provider.dart';
 import '../models/sensor_reading.dart';
+import 'package:intl/intl.dart';
+import '../models/actuator_log.dart';
+import '../models/alert.dart';
+
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -11,6 +15,16 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // State for the collapsible Control Panel sections
+  bool _isManualControlsExpanded = true;
+  bool _isScheduleSetupExpanded = false;
+  bool _isActionLogsExpanded = true;
+
+  // Static state for scheduling UI (TimeOfDay is non-persistable)
+  TimeOfDay? pumpTime;
+  TimeOfDay? lightTime;
+  String repeatOption = 'Daily';
+
   @override
   void initState() {
     super.initState();
@@ -22,51 +36,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryGreen = Colors.green.shade700;
-
     return Scaffold(
-      backgroundColor: Colors.green.shade50,
-      appBar: AppBar(
-        title: const Text('Hydro-Smart Dashboard'),
-        automaticallyImplyLeading: false,
-        backgroundColor: primaryGreen,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              Navigator.pushNamed(context, '/alertsAndNotifications');
-            },
-          ),
-        ],
-      ),
+    backgroundColor: Colors.green.shade50,
+    appBar: AppBar(
+      // FIX: Ensure title is always visible
+      title: const Text('Hydro-Smart Dashboard'), // Title kept short
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.green.shade700,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      actions: [
+        // 1. Alerts Icon (Critical Navigation)
+        IconButton(
+          icon: const Icon(Icons.notifications),
+          onPressed: () {
+            Navigator.pushNamed(context, '/alertsAndNotifications');
+          },
+        ),
+        // 2. Settings Icon (Required Navigation)
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () {
+            Navigator.pushNamed(context, '/settings');
+          },
+        ),
+        
+        // 3. Overflow Menu for Less Critical Navigation
+        PopupMenuButton<String>(
+          onSelected: (String result) {
+            Navigator.pushNamed(context, result);
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              value: '/analytics',
+              child: ListTile(
+                leading: Icon(Icons.show_chart),
+                title: Text('Analytics & History'),
+              ),
+            ),
+            const PopupMenuItem<String>(
+              value: '/sensor_monitoring',
+              child: ListTile(
+                leading: Icon(Icons.sensors),
+                title: Text('Sensor Details'),
+              ),
+            ),
+          ],
+          icon: const Icon(Icons.more_vert), // The three-dot icon
+        ),
+      ],
+    ),
       body: Consumer<HydroponicProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
+          if (provider.isLoading && provider.sensorReadings.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (provider.error.isNotEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Error: ${provider.error}'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.loadAllData(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
+            return _buildErrorState(provider);
           }
 
           return SingleChildScrollView(
@@ -74,33 +101,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- 1. Mode Control Header ---
-                _buildModeControlCard(provider, primaryGreen),
+                // --- 1. Mode Control Header (Dashboard Requirement) ---
+                _buildModeControlCard(provider),
                 _gap(),
 
-                // --- 2. Real-time Sensor Data Grid ---
-                Text(
+                // --- 2. Real-time Sensor Data Grid (Dashboard Requirement) ---
+                _buildSectionTitle(
                   'Real-time Sensor Data',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  Colors.green.shade700,
                 ),
                 _gap(height: 8),
                 _buildSensorGrid(provider),
                 _gap(),
 
-                // --- 3. System Status and Controls ---
-                Text(
-                  'System Status & Controls',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                // --- 3. Actuator Status Indicators (Dashboard Requirement) ---
+                _buildSectionTitle('Actuator Status', Colors.green.shade700),
                 _gap(height: 8),
                 _buildActuatorStatus(provider),
                 _gap(height: 24),
 
-                // --- 4. Critical Control Buttons (Only visible in Manual Mode) ---
-                if (!provider.autoMode) _buildManualControls(provider),
+                // =========================================================
+                // --- CONTROL PANEL INTEGRATION BELOW ---
+                // =========================================================
 
-                // --- 5. Navigation Buttons ---
-                _buildNavigationButtons(context, primaryGreen),
+                // --- 4. Manual Controls (Control Panel Requirement) ---
+                _buildCollapsiblePanel(
+                  title: "Manual Control Overrides",
+                  isExpanded: _isManualControlsExpanded,
+                  onTap: () => setState(
+                    () =>
+                        _isManualControlsExpanded = !_isManualControlsExpanded,
+                  ),
+                  content: _buildManualControls(provider),
+                ),
+                _gap(),
+
+                // --- 5. Schedule Setup (Control Panel Requirement) ---
+                _buildCollapsiblePanel(
+                  title: "Scheduling Setup",
+                  isExpanded: _isScheduleSetupExpanded,
+                  onTap: () => setState(
+                    () => _isScheduleSetupExpanded = !_isScheduleSetupExpanded,
+                  ),
+                  content: _buildScheduleSetup(context, provider),
+                ),
+                _gap(),
+
+                // --- 6. Recent Actions Log (Control Panel Requirement) ---
+                _buildCollapsiblePanel(
+                  title: "Recent Control Actions",
+                  isExpanded: _isActionLogsExpanded,
+                  onTap: () => setState(
+                    () => _isActionLogsExpanded = !_isActionLogsExpanded,
+                  ),
+                  content: _buildActionLogs(provider),
+                ),
+                _gap(height: 30),
               ],
             ),
           );
@@ -109,15 +165,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // --- UI Helper Methods ---
+
   Widget _gap({double height = 16, double width = 0}) =>
       SizedBox(height: height, width: width);
 
-  // === UPDATED METHODS USING PROVIDER DATA ===
+  Widget _buildSectionTitle(String title, Color color) {
+    return Text(
+      title,
+      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18),
+    );
+  }
 
-  Widget _buildModeControlCard(
-    HydroponicProvider provider,
-    Color primaryGreen,
-  ) {
+  Widget _buildErrorState(HydroponicProvider provider) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('Error: ${provider.error}'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => provider.loadAllData(),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsiblePanel({
+    required String title,
+    required bool isExpanded,
+    required VoidCallback onTap,
+    required Widget content,
+  }) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            title: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            trailing: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+            onTap: onTap,
+          ),
+          if (isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: content,
+            ),
+        ],
+      ),
+    );
+  }
+
+  // === DASHBOARD WIDGETS (REUSED) ===
+
+  Widget _buildModeControlCard(HydroponicProvider provider) {
     return Card(
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -145,15 +252,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     color: provider.autoMode
-                        ? primaryGreen
+                        ? Colors.green.shade700
                         : Colors.red.shade700,
                   ),
                 ),
                 Text(
-                  'System Health: ${provider.systemHealth}',
+                  'System Health: ${provider.systemSummary['health']}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: _getHealthColor(provider.systemHealth),
+                    color: _getHealthColor(provider.systemSummary['health']),
                   ),
                 ),
               ],
@@ -163,7 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onChanged: (value) {
                 provider.toggleAutoMode();
               },
-              activeColor: primaryGreen,
+              activeColor: Colors.green.shade700,
             ),
           ],
         ),
@@ -172,13 +279,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSensorGrid(HydroponicProvider provider) {
+    // Reusing logic from the original DashboardScreen for brevity
     final sensorData = [
       _buildSensorData(
         'Temperature',
         provider.getLatestTemperature(),
         Icons.thermostat_outlined,
         Colors.orange.shade700,
-        'Â°C',
+        '°C',
       ),
       _buildSensorData(
         'Humidity',
@@ -233,7 +341,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     return {
       'title': title,
-      'value': reading?.value.toStringAsFixed(1) ?? '--',
+      'value':
+          reading?.value.toStringAsFixed(title == 'pH Level' ? 2 : 1) ?? '--',
       'unit': unit,
       'icon': icon,
       'color': color,
@@ -293,6 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildActuatorStatus(HydroponicProvider provider) {
+    // Reusing logic from the original DashboardScreen for brevity
     return Column(
       children: [
         _buildStatusIndicator(
@@ -321,8 +431,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required bool isActive,
     required IconData icon,
   }) {
-    final Color primaryGreen = Colors.green.shade700;
-
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -334,7 +442,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Icon(
               icon,
               size: 30,
-              color: isActive ? primaryGreen : Colors.grey.shade600,
+              color: isActive ? Colors.green.shade700 : Colors.grey.shade600,
             ),
             _gap(height: 0, width: 16),
             Expanded(
@@ -351,7 +459,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     isActive ? 'Status: RUNNING' : 'Status: IDLE',
                     style: TextStyle(
-                      color: isActive ? primaryGreen : Colors.red.shade400,
+                      color: isActive
+                          ? Colors.green.shade700
+                          : Colors.red.shade400,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -368,15 +478,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // === CONTROL PANEL WIDGETS (NEWLY INTEGRATED & CONNECTED) ===
+
   Widget _buildManualControls(HydroponicProvider provider) {
+    if (provider.autoMode) {
+      return Center(
+        child: Text(
+          'Manual controls disabled. Switch to MANUAL OVERRIDE above to activate.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Manual Overrides', style: Theme.of(context).textTheme.titleLarge),
-        _gap(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
+            // Water Pump Control
             _buildControlButton(
               text: provider.isWaterPumpOn() ? 'STOP PUMP' : 'START PUMP',
               color: provider.isWaterPumpOn()
@@ -385,6 +508,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () => provider.toggleWaterPump(),
               icon: provider.isWaterPumpOn() ? Icons.power_off : Icons.power,
             ),
+            // Grow Light Control
             _buildControlButton(
               text: provider.isLightOn() ? 'LIGHT OFF' : 'LIGHT ON',
               color: provider.isLightOn()
@@ -401,6 +525,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
+            // Fan Control
             _buildControlButton(
               text: provider.isFanOn() ? 'FAN OFF' : 'FAN ON',
               color: provider.isFanOn()
@@ -409,16 +534,135 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () => provider.toggleFan(),
               icon: provider.isFanOn() ? Icons.air : Icons.air_outlined,
             ),
+            // EMERGENCY STOP
             _buildControlButton(
               text: 'EMERGENCY STOP',
               color: Colors.red.shade700,
-              onPressed: () => provider.emergencyStop(),
+              onPressed: () {
+                provider.emergencyStop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🚨 Emergency Stop activated — All off'),
+                  ),
+                );
+              },
               icon: Icons.emergency,
             ),
           ],
         ),
-        _gap(height: 24),
       ],
+    );
+  }
+
+  Widget _buildScheduleSetup(
+    BuildContext context,
+    HydroponicProvider provider,
+  ) {
+    // NOTE: Schedule actions (setting time) would require corresponding methods
+    // in HydroponicProvider to save them to SQLite/Firebase.
+
+    return Column(
+      children: [
+        _buildScheduleRow(
+          label: "Pump Activation Time",
+          time: pumpTime,
+          onPick: () => _pickTime(context, "Pump", provider),
+        ),
+        _buildScheduleRow(
+          label: "Light Activation Time",
+          time: lightTime,
+          onPick: () => _pickTime(context, "Light", provider),
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          value: repeatOption,
+          items: const [
+            DropdownMenuItem(value: "Daily", child: Text("Daily")),
+            DropdownMenuItem(value: "Hourly", child: Text("Hourly")),
+          ],
+          onChanged: (value) => setState(() => repeatOption = value ?? "Daily"),
+          decoration: const InputDecoration(
+            labelText: "Repeat Schedule",
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickTime(
+    BuildContext context,
+    String type,
+    HydroponicProvider provider,
+  ) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        if (type == "Pump") {
+          pumpTime = picked;
+        } else {
+          lightTime = picked;
+        }
+      });
+
+      // Notify the user or log the schedule update (calls Provider method if implemented)
+      provider.addAlert(
+        Alert(
+          alertType: 'SCHEDULE_UPDATE',
+          message:
+              '$type schedule set to ${picked.format(context)} ($repeatOption)',
+          severity: 'LOW',
+          timestamp: DateTime.now(),
+        ),
+      );
+    }
+  }
+
+  Widget _buildActionLogs(HydroponicProvider provider) {
+    // Fetch logs from ActuatorDao via provider, then display (Log is stored in Actuator Logs table)
+    return FutureBuilder<List<ActuatorLog>>(
+      future: provider
+          .getActuatorLogs(), // Assuming you add this getter to HydroponicProvider
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: Text("Loading logs..."));
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              "No recent actions recorded.",
+              style: TextStyle(color: Colors.grey),
+            ),
+          );
+        }
+
+        final logs = snapshot.data!;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: logs.length > 10 ? 10 : logs.length, // Show top 10 logs
+          itemBuilder: (context, index) {
+            final log = logs[index];
+            return ListTile(
+              dense: true,
+              leading: Icon(
+                Icons.history,
+                color: logs[index].action == 'ON' ? Colors.green : Colors.red,
+              ),
+              title: Text(
+                '${_formatLogTime(log.timestamp)} - ${log.actuatorName} ${log.action} (${log.mode})',
+                style: const TextStyle(fontSize: 14),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -434,14 +678,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: ElevatedButton.icon(
           onPressed: onPressed,
           icon: Icon(icon, color: Colors.white),
-          label: Text(
-            text,
-            style: const TextStyle(color: Colors.white),
-            textAlign: TextAlign.center,
-          ),
+          label: Text(text, style: const TextStyle(color: Colors.white)),
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -452,60 +692,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildNavigationButtons(BuildContext context, Color primaryGreen) {
-    return Column(
-      children: [
-        _buildNavigationButton(
-          context: context,
-          route: '/sensor_monitoring',
-          icon: Icons.sensors,
-          label: 'Go to Sensor Monitoring',
-          color: primaryGreen,
-        ),
-        _gap(height: 12),
-        _buildNavigationButton(
-          context: context,
-          route: '/control_panel',
-          icon: Icons.settings_remote,
-          label: 'Go to Control Panel',
-          color: Colors.lightBlue.shade400,
-        ),
-        _gap(height: 12),
-        _buildNavigationButton(
-          context: context,
-          route: '/history',
-          icon: Icons.history,
-          label: 'View History',
-          color: Colors.deepPurple,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNavigationButton({
-    required BuildContext context,
-    required String route,
-    required IconData icon,
+  Widget _buildScheduleRow({
     required String label,
-    required Color color,
+    required TimeOfDay? time,
+    required VoidCallback onPick,
   }) {
-    return SizedBox(
-      width: double.infinity, // Makes all buttons same width
-      child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.pushNamed(context, route);
-        },
-        icon: Icon(icon),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: Text(label)),
+          TextButton.icon(
+            onPressed: onPick,
+            icon: const Icon(Icons.access_time),
+            label: Text(time != null ? time.format(context) : "Set Time"),
           ),
-          elevation: 2,
-        ),
+        ],
       ),
     );
   }
@@ -528,5 +731,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _formatTime(DateTime timestamp) {
     return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatLogTime(DateTime timestamp) {
+    return DateFormat('hh:mm:ss a').format(timestamp);
   }
 }

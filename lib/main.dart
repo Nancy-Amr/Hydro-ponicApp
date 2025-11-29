@@ -7,7 +7,7 @@ import 'screens/signup.dart';
 import 'screens/forgotpass.dart';
 import 'screens/sensor_monitoring.dart';
 import 'screens/settings.dart';
-import 'screens/history.dart';
+// import 'screens/history.dart';
 import 'screens/alertsAndNotifications.dart';
 import 'screens/control_panel.dart';
 import 'providers/hydroponic_provider.dart';
@@ -65,7 +65,7 @@ class MyApp extends StatelessWidget {
           '/settings': (context) => const SettingsScreen(),
           '/alertsAndNotifications': (context) => const AlertsScreen(),
           '/control_panel': (context) => const ControlPanelScreen(),
-          '/history': (context) => const HistoryScreen(),
+          // '/history': (context) => const HistoryScreen(),
         },
         debugShowCheckedModeBanner: false,
       ),

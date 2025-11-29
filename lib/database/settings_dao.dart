@@ -1,89 +1,70 @@
-import "package:hydroponic_app/models/system_setting.dart";
+import '../models/system_setting.dart';
 import 'database_helper.dart';
 
 class SettingsDao {
   final DatabaseHelper dbHelper = DatabaseHelper();
 
-  // Get all system settings
+  // Get all settings
   Future<List<SystemSetting>> getAllSettings() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query('system_settings');
     return List.generate(maps.length, (i) => SystemSetting.fromMap(maps[i]));
   }
 
-  // Get a specific setting by key
-  Future<SystemSetting?> getSetting(String key) async {
+  // Update setting
+  Future<void> updateSetting(String key, String value) async {
     final db = await dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    await db.update(
       'system_settings',
-      where: 'setting_key = ?',
-      whereArgs: [key],
-    );
-    if (maps.isEmpty) return null;
-    return SystemSetting.fromMap(maps.first);
-  }
-
-  // Update a setting value
-  Future<int> updateSetting(String key, String newValue) async {
-    final db = await dbHelper.database;
-    return await db.update(
-      'system_settings',
-      {'setting_value': newValue},
+      {'setting_value': value},
       where: 'setting_key = ?',
       whereArgs: [key],
     );
   }
 
-  // Get setting as specific type with fallback
-  Future<double> getSettingAsDouble(String key, double defaultValue) async {
-    final setting = await getSetting(key);
-    if (setting == null) return defaultValue;
-    return setting.asDouble;
-  }
-
-  Future<int> getSettingAsInt(String key, int defaultValue) async {
-    final setting = await getSetting(key);
-    if (setting == null) return defaultValue;
-    return setting.asInt;
-  }
-
-  Future<bool> getSettingAsBool(String key, bool defaultValue) async {
-    final setting = await getSetting(key);
-    if (setting == null) return defaultValue;
-    return setting.asBool;
-  }
-
-  Future<String> getSettingAsString(String key, String defaultValue) async {
-    final setting = await getSetting(key);
-    if (setting == null) return defaultValue;
-    return setting.asString;
-  }
-
-  // Bulk update multiple settings
+  // Update multiple settings
   Future<void> updateMultipleSettings(Map<String, String> settings) async {
     final db = await dbHelper.database;
     final batch = db.batch();
-
-    for (final entry in settings.entries) {
+    
+    settings.forEach((key, value) {
       batch.update(
         'system_settings',
-        {'setting_value': entry.value},
+        {'setting_value': value},
         where: 'setting_key = ?',
-        whereArgs: [entry.key],
+        whereArgs: [key],
       );
-    }
-
+    });
+    
     await batch.commit();
   }
 
-  // Reset settings to defaults - FIXED
+  // Reset to defaults
   Future<void> resetToDefaults() async {
     final db = await dbHelper.database;
+    final defaultSettings = [
+      {'setting_key': 'temp_min', 'setting_value': '18.0'},
+      {'setting_key': 'temp_max', 'setting_value': '26.0'},
+      {'setting_key': 'humidity_min', 'setting_value': '50.0'},
+      {'setting_key': 'humidity_max', 'setting_value': '70.0'},
+      {'setting_key': 'ph_min', 'setting_value': '5.8'},
+      {'setting_key': 'ph_max', 'setting_value': '6.2'},
+      {'setting_key': 'water_level_min', 'setting_value': '60.0'},
+      {'setting_key': 'water_level_max', 'setting_value': '90.0'},
+      {'setting_key': 'light_intensity_min', 'setting_value': '25000.0'},
+      {'setting_key': 'light_intensity_max', 'setting_value': '40000.0'},
+      {'setting_key': 'auto_mode', 'setting_value': 'true'},
+    ];
 
-    // Delete existing settings
-    await db.delete('system_settings');
-
-    // Re-insert default data using the PUBLIC method
-    await dbHelper.insertDefaultData(db);
+    final batch = db.batch();
+    for (final setting in defaultSettings) {
+      batch.update(
+        'system_settings',
+        {'setting_value': setting['setting_value']},
+        where: 'setting_key = ?',
+        whereArgs: [setting['setting_key']],
+      );
+    }
+    await batch.commit();
   }
 }

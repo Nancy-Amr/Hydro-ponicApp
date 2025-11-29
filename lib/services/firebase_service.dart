@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../models/sensor_reading.dart';
-import '../models/actuator_status.dart';
 import '../models/alert.dart';
 
 class FirebaseService {

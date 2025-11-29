@@ -38,3 +38,7 @@ class ActuatorLog {
     return 'ActuatorLog(id: $id, actuatorName: $actuatorName, action: $action, mode: $mode, timestamp: $timestamp)';
   }
 }
+// -------------------------------------------------------------
+// **The DAO methods were removed from here:**
+// Future<List<ActuatorLog>> getActuatorLogs() async { ... } 
+// -------------------------------------------------------------
