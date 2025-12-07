@@ -1,7 +1,8 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
+
+// Note: fl_chart is replaced with simplified native Flutter widgets for visualization.
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -32,12 +33,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     'EC': [0.0, 3.0],
   };
 
-  final Map<String, List<double>> optimalRanges = {
-    'Temperature': [20.0, 28.0],
-    'PH Level': [5.5, 6.5],
-    'EC': [1.5, 2.2],
-  };
-
   final Map<String, Color> sensorColors = {
     'Temperature': Colors.orange,
     'Humidity': Colors.blue,
@@ -58,7 +53,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return days > 2 ? const Duration(days: 1) : const Duration(hours: 1);
   }
 
-  // Generate mock data at an hourly interval regardless of the selected range
+  // Generate mock data (logic unchanged)
   List<Map<String, dynamic>> _mockData({
     required String sensor,
     required DateTimeRange range,
@@ -142,137 +137,161 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'last': values.last,
     };
   }
-
-  LineChartData _buildChartData(List<Map<String, dynamic>> data) {
-    final samplingInterval = _getSamplingInterval();
-    final isDaily = samplingInterval.inDays > 0;
-
-    final spots = [
-      for (var i = 0; i < data.length; i++)
-        FlSpot(i.toDouble(), data[i]['value'] as double),
-    ];
+  
+  // --- Simplified Line Visualization Widget ---
+  Widget _buildSimpleLineChart(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) {
+      return const Center(child: Text('No data available to plot'));
+    }
     final color = sensorColors[selectedSensor] ?? Colors.green;
-    final range = sensorRanges[selectedSensor]!;
+    final values = data.map((e) => e['value'] as double).toList();
+    final minVal = values.reduce(min);
+    final maxVal = values.reduce(max);
+    final rangeVal = maxVal - minVal;
 
-    return LineChartData(
-      lineTouchData: const LineTouchData(enabled: false),
-      gridData: const FlGridData(show: true, drawVerticalLine: false),
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(showTitles: true, reservedSize: 40),
-        ),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            // Calculate a sensible interval, showing roughly 6-8 labels
-            interval: (data.length / (isDaily ? 6 : 8))
-                .clamp(1, data.length)
-                .toDouble(),
-            getTitlesWidget: (value, meta) {
-              final idx = value.round().clamp(0, data.length - 1);
-              final dt = data[idx]['time'] as DateTime;
-
-              // Format labels based on sampling rate
-              String labelText = isDaily
-                  ? "${dt.month}/${dt.day}"
-                  : "${dt.hour}:00";
-
-              return SideTitleWidget(
-                meta: meta,
-                space: 4.0,
-                child: Text(labelText, style: const TextStyle(fontSize: 10)),
-              );
-            },
-          ),
-        ),
+    // This uses stacked containers to simulate a bar/line chart visualization
+    return Container(
+      padding: const EdgeInsets.only(top: 10, bottom: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
       ),
-      minX: 0,
-      maxX: (data.length - 1)
-          .toDouble(), // MaxX should be index of last element
-      minY: range[0],
-      maxY: range[1],
-      lineBarsData: [
-        LineChartBarData(
-          spots: spots,
-          isCurved: true,
-          color: color,
-          barWidth: 3,
-
-          dotData: FlDotData(show: data.length <= 31),
-        ),
-      ],
+      child: Column(
+        children: [
+          // Y-axis labels (min/max)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(maxVal.toStringAsFixed(1), style: TextStyle(fontSize: 10, color: color)),
+                Text(minVal.toStringAsFixed(1), style: TextStyle(fontSize: 10, color: color)),
+              ],
+            ),
+          ),
+          // Placeholder line chart (colored container)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: List.generate(data.length, (index) {
+                  final value = data[index]['value'] as double;
+                  // Normalize value between 0.0 and 1.0 for height calculation
+                  double normalized = rangeVal == 0 ? 0.5 : (value - minVal) / rangeVal;
+                  
+                  return Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        width: 2, // Width of each bar segment
+                        margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                        height: 5 + (normalized * 95).clamp(0, 100), // Height based on value (clamped)
+                        color: color.withOpacity(0.7 + normalized * 0.3),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+          // X-axis label placeholder
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Start', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                Text('End', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  // Light Exposure Distribution (mock data)
+  // Light Exposure Distribution (Simplified Pie visualization)
   Widget _lightExposureChart() {
     const double activeHours = 16;
     const double inactiveHours = 8;
-
     final total = activeHours + inactiveHours;
-    final activePercent = (activeHours / total) * 100;
-    final inactivePercent = (inactiveHours / total) * 100;
+    final activePercent = activeHours / total;
+    final inactivePercent = inactiveHours / total;
 
     return Card(
       elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.only(top: 20),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             const Text(
-              'Light Exposure Distribution',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              '🌞 Light Cycle Analysis',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
             ),
-            const SizedBox(height: 12),
-            AspectRatio(
-              aspectRatio: 1.5,
-              child: PieChart(
-                PieChartData(
-                  centerSpaceRadius: 50,
-                  sectionsSpace: 4,
-                  sections: [
-                    PieChartSectionData(
-                      color: Colors.amber,
-                      value: activePercent,
-                      title: '${activePercent.toStringAsFixed(1)}% Active',
-                      radius: 70,
-                      titleStyle: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      color: Colors.grey.shade400,
-                      value: inactivePercent,
-                      title: '${inactivePercent.toStringAsFixed(1)}% Inactive',
-                      radius: 70,
-                      titleStyle: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 16),
+            // Custom Pie Chart using LinearProgressIndicator for simplification
+            SizedBox(
+              height: 10,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: LinearProgressIndicator(
+                  value: activePercent,
+                  backgroundColor: Colors.grey.shade400,
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _exposureLegend(
+                  label: 'Light ON',
+                  hours: activeHours,
+                  percent: activePercent,
+                  color: Colors.amber,
+                ),
+                _exposureLegend(
+                  label: 'Light OFF',
+                  hours: inactiveHours,
+                  percent: inactivePercent,
+                  color: Colors.grey.shade400,
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
-            const Text(
-              'Represents grow light ON/OFF ratio over last 24 hours.',
+            Text(
+              'Target 16:8 Photoperiod',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.black54),
+              style: TextStyle(fontSize: 12, color: Colors.green.shade700),
             ),
           ],
         ),
       ),
     );
   }
+  
+  // Widget for Light Exposure Legend
+  Widget _exposureLegend({required String label, required double hours, required double percent, required Color color}) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Container(width: 10, height: 10, color: color, margin: const EdgeInsets.only(right: 5)),
+            Text(label, style: const TextStyle(fontSize: 14)),
+          ],
+        ),
+        Text(
+          '${hours.toStringAsFixed(0)} hrs (${(percent * 100).toStringAsFixed(0)}%)',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
 
   Future<void> _exportCsv() async {
     final data = _currentData;
@@ -285,26 +304,163 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('CSV copied to clipboard')));
+    ).showSnackBar(SnackBar(
+      content: const Text('CSV copied to clipboard'),
+      backgroundColor: Colors.green.shade700,
+    ));
   }
 
+  // --- Updated Metric Card UI ---
   Widget _metricCard(String label, double value, Color color) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 2),
-        Text(
-          value.toStringAsFixed(2),
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+        Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade600, fontSize: 12)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withOpacity(0.5)),
+          ),
+          child: Text(
+            value.toStringAsFixed(2),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
         ),
       ],
     );
   }
 
+  // --- Helper Widgets ---
+
+  // FIXED: Changed from ActionChip to ChoiceChip to correctly use the 'selected' parameter
+  Widget _timeRangeChip(String label, bool isSelected, VoidCallback onPressed) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected, // This is now a valid parameter
+      selectedColor: Colors.green.shade700,
+      backgroundColor: Colors.white,
+      side: BorderSide(color: isSelected ? Colors.green.shade900 : Colors.green.shade400),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.green.shade900,
+        fontWeight: FontWeight.bold,
+      ),
+      onSelected: (bool selected) { // ChoiceChip uses onSelected(bool selected)
+        if (selected) {
+          onPressed();
+        }
+      },
+    );
+  }
+
+  void _updateRange(Duration duration) {
+    setState(() {
+      selectedRange = DateTimeRange(
+        start: DateTime.now().subtract(duration),
+        end: DateTime.now(),
+      );
+    });
+  }
+
+  Widget _dateRangePickerChip() {
+    return ActionChip(
+      label: const Text('Custom Date'),
+      avatar: const Icon(Icons.calendar_today, size: 18),
+      onPressed: _selectDateRange,
+      backgroundColor: Colors.green.shade100,
+      side: BorderSide(color: Colors.green.shade400),
+      labelStyle: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.bold),
+    );
+  }
+  
+  // Custom date picker function
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 2)),
+      lastDate: DateTime.now(),
+      currentDate: DateTime.now(),
+    );
+    if (picked != null && picked != selectedRange) {
+      setState(() {
+        selectedRange = picked;
+      });
+    }
+  }
+
+
+  Widget _buildSummaryCard(Map<String, double> stats, Color color) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _metricCard('Min', stats['min']!, color),
+            const VerticalDivider(width: 1),
+            _metricCard('Max', stats['max']!, color),
+            const VerticalDivider(width: 1),
+            _metricCard('Avg', stats['avg']!, color),
+            const VerticalDivider(width: 1),
+            _metricCard('Last', stats['last']!, color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentReadingsList(List<Map<String, dynamic>> data, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Recent Readings',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: min(data.length, 7), // Show max 7 recent data points
+          separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.black12),
+          itemBuilder: (_, i) {
+            // Get the data point, showing most recent first
+            final item = data[data.length - 1 - i]; 
+            final isDaily = _getSamplingInterval().inDays > 0;
+            final dt = item['time'] as DateTime;
+
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.sensors, color: color),
+              title: Text(
+                '$selectedSensor: ${(item['value'] as double).toStringAsFixed(2)}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                isDaily 
+                ? '${dt.month}/${dt.day}/${dt.year} (Daily Avg)'
+                : '${dt.month}/${dt.day} ${dt.hour}:00',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              trailing: Text(
+                selectedSensor == 'PH Level' ? 'pH' : (selectedSensor == 'EC' ? 'mS/cm' : (selectedSensor == 'Temperature' ? '°C' : '')),
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // --- Main Build Method ---
   @override
   Widget build(BuildContext context) {
     final data = _currentData;
@@ -313,200 +469,116 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     // Check which range button is currently active for styling
     final is24h = selectedRange.duration.inDays < 2;
-    final is7d =
-        selectedRange.duration.inDays >= 6 &&
-        selectedRange.duration.inDays <= 8;
+    final is7d = selectedRange.duration.inDays >= 6 && selectedRange.duration.inDays <= 8;
     final is30d = selectedRange.duration.inDays >= 29;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History & Analytics'),
+        title: const Text('Sensor History'),
         backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.file_download),
+            icon: const Icon(Icons.file_download_outlined),
             tooltip: 'Export CSV',
             onPressed: _exportCsv,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Preset ranges (24h, 7d, 30d)
-              Wrap(
-                spacing: 8,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // --- 1. Time Range Selection Chips (FIXED) ---
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  ElevatedButton(
-                    onPressed: () => setState(() {
-                      selectedRange = DateTimeRange(
-                        start: DateTime.now().subtract(
-                          const Duration(hours: 24),
-                        ),
-                        end: DateTime.now(),
-                      );
-                    }),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: is24h
-                          ? Colors.green.shade900
-                          : Colors.green.shade700,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('24h'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() {
-                      selectedRange = DateTimeRange(
-                        start: DateTime.now().subtract(const Duration(days: 7)),
-                        end: DateTime.now(),
-                      );
-                    }),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: is7d
-                          ? Colors.green.shade900
-                          : Colors.green.shade700,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('7d'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() {
-                      selectedRange = DateTimeRange(
-                        start: DateTime.now().subtract(
-                          const Duration(days: 30),
-                        ),
-                        end: DateTime.now(),
-                      );
-                    }),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: is30d
-                          ? Colors.green.shade900
-                          : Colors.green.shade700,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('30d'),
-                  ),
+                  _timeRangeChip('24h', is24h, () => _updateRange(const Duration(hours: 24))),
+                  _timeRangeChip('7d', is7d, () => _updateRange(const Duration(days: 7))),
+                  _timeRangeChip('30d', is30d, () => _updateRange(const Duration(days: 30))),
+                  _dateRangePickerChip(), // Custom date picker option (ActionChip)
                 ],
               ),
-              const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 20),
 
-              // Sensor selector
-              Wrap(
-                spacing: 8,
-                children: sensors.map((s) {
-                  return ChoiceChip(
-                    label: Text(s),
-                    selected: s == selectedSensor,
-                    selectedColor: color.withAlpha(51),
-                    onSelected: (_) => setState(() => selectedSensor = s),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-
-              // Summary cards
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 10,
+            // --- 2. Sensor Selector (Chips) ---
+            const Text(
+              'Select Metric',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: sensors.map((s) {
+                return ActionChip(
+                  label: Text(s),
+                  avatar: s == selectedSensor ? Icon(Icons.check, color: color) : null,
+                  backgroundColor: s == selectedSensor ? color.withOpacity(0.15) : Colors.grey.shade200,
+                  labelStyle: TextStyle(
+                    color: s == selectedSensor ? color : Colors.black87,
+                    fontWeight: FontWeight.w500,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _metricCard('Min', stats['min']!, color),
-                      _metricCard('Max', stats['max']!, color),
-                      _metricCard('Avg', stats['avg']!, color),
-                      _metricCard('Last', stats['last']!, color),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+                  onPressed: () => setState(() => selectedSensor = s),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
 
-              // Main line chart
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        // Updated title to show the time granularity
-                        '$selectedSensor (${_getSamplingInterval().inDays > 0 ? 'Daily Average' : 'Hourly Readings'})',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        '${selectedRange.start.month}/${selectedRange.start.day}–${selectedRange.end.month}/${selectedRange.end.day}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      AspectRatio(
-                        aspectRatio: 1.7,
-                        child: data.isNotEmpty
-                            ? LineChart(_buildChartData(data))
-                            : const Center(child: Text('No data available')),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            // --- 3. Summary Statistics Card ---
+            _buildSummaryCard(stats, color),
+            const SizedBox(height: 20),
 
-              // Light Exposure Pie Chart
-              _lightExposureChart(),
-
-              const SizedBox(height: 20),
-
-              // Recent readings
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Recent Readings (Aggregated)',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 8),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                // Only show a limited number of recent data points
-                itemCount: min(data.length, 10),
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final item =
-                      data[data.length - 1 - i]; // Show most recent first
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: color.withAlpha(77),
-                      child: Text(
-                        (item['value'] as double).toStringAsFixed(1),
-                        style: const TextStyle(fontSize: 12),
+            // --- 4. Main Data Visualization (Simplified Chart) ---
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      selectedSensor,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: color,
                       ),
                     ),
-                    title: Text(
-                      '$selectedSensor: ${(item['value'] as double).toStringAsFixed(2)}',
+                    Text(
+                      '${_getSamplingInterval().inDays > 0 ? 'Daily Average' : 'Hourly Readings'} (${selectedRange.duration.inDays} days)',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    subtitle: Text(
-                      '${item['time'].toString().substring(0, 10)} ${_getSamplingInterval().inDays > 0 ? '(Daily Avg)' : ''}',
+                    const SizedBox(height: 12),
+                    AspectRatio(
+                      aspectRatio: 1.8,
+                      child: _buildSimpleLineChart(data), // Using the simplified visualization
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+
+            // --- 5. Light Exposure Pie Chart (Simplified) ---
+            if (selectedSensor == 'Light Intensity') _lightExposureChart(),
+
+            const SizedBox(height: 30),
+
+            // --- 6. Recent Readings List ---
+            _buildRecentReadingsList(data, color),
+          ],
         ),
       ),
     );
   }
 }
+

@@ -20,7 +20,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
 
-  // New controllers for inputs
+  // Controllers for inputs
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -68,6 +68,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   Future<void> _signUpAndNavigate() async {
+    // Crucial step: Validate all inputs before proceeding
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() {
@@ -220,9 +221,13 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 controller: _nameController,
                                 labelText: 'Name',
                                 prefixIcon: Icons.person_outline,
+                                // **NEW Name Validation**
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your name';
+                                  }
+                                  if (value.length < 2) {
+                                    return 'Name must be at least 2 characters';
                                   }
                                   return null;
                                 },
@@ -237,6 +242,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 controller: _emailController,
                                 labelText: 'Email',
                                 prefixIcon: Icons.email_outlined,
+                                // **Email Validation**
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
@@ -260,13 +266,33 @@ class _SignUpScreenState extends State<SignUpScreen>
                                 controller: _passwordController,
                                 labelText: 'Password',
                                 prefixIcon: Icons.lock_outline_rounded,
+                                // **ENHANCED Password Validation**
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter a password';
+                                    return 'Please enter your password';
                                   }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
+
+                                  // Check minimum length
+                                  if (value.length < 8) {
+                                    return 'Password must be at least 8 characters.';
                                   }
+
+                                  // Check complexity
+                                  if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                                    return 'Must contain at least one uppercase letter.';
+                                  }
+                                  if (!RegExp(r'[a-z]').hasMatch(value)) {
+                                    return 'Must contain at least one lowercase letter.';
+                                  }
+                                  if (!RegExp(r'[0-9]').hasMatch(value)) {
+                                    return 'Must contain at least one digit.';
+                                  }
+                                  if (!RegExp(
+                                    r'[!@#\$%\^&\*\-\+\=\?\<\>\,\.\:\;\{\}\[\]]',
+                                  ).hasMatch(value)) {
+                                    return 'Must contain at least one special character.';
+                                  }
+
                                   return null;
                                 },
                                 obscureText: !_isPasswordVisible,

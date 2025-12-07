@@ -10,10 +10,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Alerts Demo',
+      title: 'Hydroponics Alerts Demo',
       theme: ThemeData(
+        // Keeping the Material 3 design and the green seed color
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        // Customizing AppBar for a cleaner look
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.green.shade700,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          elevation: 0,
+        ),
       ),
       home: const AlertsScreen(),
     );
@@ -24,9 +32,9 @@ class AlertItem {
   final String id;
   final String title;
   final String message;
-  final String severity;
-  final String time;
-  final String date;
+  final String severity; // Critical, Warning, Info
+  final String time; // e.g., "14:32"
+  final String date; // e.g., "Today", "Yesterday"
   bool isRead;
 
   AlertItem({
@@ -55,8 +63,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
   final List<AlertItem> alerts = [
     AlertItem(
       id: 'a1',
-      title: "High pH detected",
-      message: "pH level 7.8 exceeded safe range.",
+      title: "High pH Detected",
+      message: "pH level 7.8 exceeded safe range. Action required.",
       severity: "Critical",
       time: "14:32",
       date: "Today",
@@ -64,8 +72,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
     ),
     AlertItem(
       id: 'a2',
-      title: "Low water level",
-      message: "Reservoir water below 30%.",
+      title: "Low Water Level",
+      message: "Reservoir water below 30%. Replenish soon.",
       severity: "Warning",
       time: "12:50",
       date: "Today",
@@ -73,14 +81,34 @@ class _AlertsScreenState extends State<AlertsScreen> {
     ),
     AlertItem(
       id: 'a3',
-      title: "Light sensor offline",
-      message: "LDR sensor not responding.",
+      title: "Light Sensor Offline",
+      message: "LDR sensor not responding. Check connection.",
       severity: "Info",
-      time: "Yesterday",
+      time: "10:00",
       date: "Yesterday",
       isRead: true,
     ),
+    AlertItem(
+      id: 'a4',
+      title: "Nutrient Auto-Dose Failed",
+      message: "Pump P1 did not activate.",
+      severity: "Critical",
+      time: "08:15",
+      date: "Yesterday",
+      isRead: false,
+    ),
+    AlertItem(
+      id: 'a5',
+      title: "Temperature Stable",
+      message: "System running at 22.5°C.",
+      severity: "Info",
+      time: "15:00",
+      date: "Today",
+      isRead: true,
+    ),
   ];
+
+  // --- Utility Functions ---
 
   // Filter + search logic
   List<AlertItem> get filteredAlerts {
@@ -103,224 +131,369 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }).toList();
   }
 
+  // Gets the color for the severity indicator
   Color getSeverityColor(String severity) {
     switch (severity) {
       case "Critical":
-        return Colors.redAccent;
+        return Colors.red.shade700;
       case "Warning":
-        return Colors.orangeAccent;
+        return Colors.orange.shade700;
       case "Info":
-        return Colors.blueAccent;
+        return Colors.green.shade600;
       default:
-        return Colors.grey;
+        return Colors.grey.shade500;
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {},
-        ),
-        title: const Text("Alerts & Notifications"),
-        centerTitle: true,
-        backgroundColor: Colors.green.shade700,
+  // Gets the icon for the severity indicator
+  IconData getSeverityIcon(String severity) {
+    switch (severity) {
+      case "Critical":
+        return Icons.warning_rounded;
+      case "Warning":
+        return Icons.info_outline_rounded;
+      case "Info":
+        return Icons.notifications_active_outlined;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  // --- Widgets ---
+
+  // Custom filter chip widget
+  Widget _buildFilterChip(String label) {
+    final isSelected = selectedFilter == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: Colors.green.shade700,
+      backgroundColor: Colors.green.shade50,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.green.shade800,
+        fontWeight: FontWeight.w600,
       ),
-      body: Column(
-        children: [
-          // Filter Row
-          Container(
-            color: const Color.fromARGB(255, 227, 242, 228),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildFilterButton("All"),
-                _buildFilterButton("Critical"),
-                _buildFilterButton("Warning"),
-                _buildFilterButton("Info"),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search alerts...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      isDense: true,
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        searchQuery = value;
-                      });
-                    },
-                  ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? Colors.green.shade700 : Colors.green.shade300,
+        ),
+      ),
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            selectedFilter = label;
+          });
+        }
+      },
+    );
+  }
+
+  // Individual Alert List Item (Replaced ListTile with custom Card)
+  Widget _buildAlertCard(AlertItem alert) {
+    final severityColor = getSeverityColor(alert.severity);
+    final severityIcon = getSeverityIcon(alert.severity);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        // Add a subtle border for unread critical alerts
+        side: alert.severity == "Critical" && !alert.isRead
+            ? BorderSide(color: severityColor, width: 2)
+            : BorderSide.none,
+      ),
+      color: alert.isRead ? Colors.white : Colors.green.shade50,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            alert.isRead = true; // Mark as read on tap
+          });
+          _showAlertDialog(alert); // Show detailed dialog
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Severity/Status Indicator
+              Container(
+                width: 6,
+                height: 50, // Match a good height for the text
+                decoration: BoxDecoration(
+                  color: severityColor,
+                  borderRadius: BorderRadius.circular(3),
                 ),
-                const SizedBox(width: 10),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Clear Visible Alerts',
-                  onPressed: () {
-                    final visible = filteredAlerts;
-                    if (visible.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No alerts to delete')),
-                      );
-                      return;
-                    }
-                    final idsToRemove = visible.map((a) => a.id).toSet();
-                    setState(() {
-                      alerts.removeWhere((a) => idsToRemove.contains(a.id));
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Deleted ${idsToRemove.length} visible alert(s)',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          // Alerts List
-          Expanded(
-            child: filteredAlerts.isEmpty
-                ? Center(
-                    child: Text(
-                      alerts.isEmpty
-                          ? "No alerts available"
-                          : "No matching alerts",
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(10),
-                    itemCount: filteredAlerts.length,
-                    itemBuilder: (context, index) {
-                      final alert = filteredAlerts[index];
-                      return Dismissible(
-                        key: ValueKey(alert.id),
-                        background: Container(
-                          color: Colors.green,
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          child: const Icon(Icons.check, color: Colors.white),
-                        ),
-                        direction: DismissDirection.endToStart,
-                        onDismissed: (direction) {
-                          // remove from the master list by id
-                          setState(() {
-                            alerts.removeWhere((a) => a.id == alert.id);
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('${alert.title} dismissed')),
-                          );
-                        },
-                        child: Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: getSeverityColor(alert.severity),
-                              child: Icon(
-                                alert.severity == "Critical"
-                                    ? Icons.error
-                                    : alert.severity == "Warning"
-                                    ? Icons.warning
-                                    : Icons.info_outline,
-                                color: Colors.white,
-                              ),
+              ),
+              const SizedBox(width: 12),
+              // 2. Icon + Main Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(severityIcon, size: 20, color: severityColor),
+                        const SizedBox(width: 6),
+                        // Title
+                        Expanded(
+                          child: Text(
+                            alert.title,
+                            style: TextStyle(
+                              fontWeight: alert.isRead
+                                  ? FontWeight.normal
+                                  : FontWeight.bold,
+                              fontSize: 16,
+                              color: alert.isRead
+                                  ? Colors.grey.shade700
+                                  : Colors.black87,
                             ),
-                            title: Text(
-                              alert.title,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: alert.isRead
-                                    ? Colors.grey.shade600
-                                    : Colors.black,
-                              ),
-                            ),
-                            subtitle: Text(alert.message),
-                            trailing: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  alert.time,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  alert.date,
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ],
-                            ),
-                            onTap: () {
-                              setState(() {
-                                alert.isRead = true;
-                              });
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(alert.title),
-                                  content: Text(alert.message),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.of(ctx).pop(),
-                                      child: const Text('Close'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Message
+                    Text(
+                      alert.message,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: alert.isRead
+                            ? Colors.grey.shade500
+                            : Colors.black54,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              // 3. Time/Date Indicator
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      alert.time,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: alert.isRead
+                            ? FontWeight.normal
+                            : FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      alert.date,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Dialog to show detailed alert information
+  void _showAlertDialog(AlertItem alert) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              getSeverityIcon(alert.severity),
+              color: getSeverityColor(alert.severity),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              alert.title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(alert.message),
+            const SizedBox(height: 10),
+            Text(
+              'Severity: ${alert.severity}',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            Text(
+              'Time: ${alert.time} on ${alert.date}',
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('OK', style: TextStyle(color: Colors.green.shade700)),
           ),
         ],
       ),
     );
   }
 
-  // Custom filter button widget
-  Widget _buildFilterButton(String label) {
-    final isSelected = selectedFilter == label;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedFilter = label;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green.shade600 : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.green.shade700),
+  // --- Build Method ---
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            // This navigates back to the previous screen (the Dashboard)
+            Navigator.pop(context);
+          },
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.green.shade700,
-            fontWeight: FontWeight.w600,
+        title: const Text("System Alerts"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Clear Visible Alerts',
+            onPressed: () {
+              final visible = filteredAlerts;
+              if (visible.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No alerts to delete')),
+                );
+                return;
+              }
+              final idsToRemove = visible.map((a) => a.id).toSet();
+              setState(() {
+                alerts.removeWhere((a) => idsToRemove.contains(a.id));
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Deleted ${idsToRemove.length} visible alert(s)',
+                  ),
+                  backgroundColor: Colors.green.shade700,
+                ),
+              );
+            },
           ),
-        ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search title, message, or time...',
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 10.0,
+                  horizontal: 20,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value;
+                });
+              },
+            ),
+          ),
+          // Filter Chips Row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip("All"),
+                  const SizedBox(width: 8),
+                  _buildFilterChip("Critical"),
+                  const SizedBox(width: 8),
+                  _buildFilterChip("Warning"),
+                  const SizedBox(width: 8),
+                  _buildFilterChip("Info"),
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: Colors.grey),
+          // Alerts List
+          Expanded(
+            child: filteredAlerts.isEmpty
+                ? Center(
+                    child: Text(
+                      alerts.isEmpty
+                          ? "No historical alerts available."
+                          : "No alerts match your current filter/search.",
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    itemCount: filteredAlerts.length,
+                    itemBuilder: (context, index) {
+                      final alert = filteredAlerts[index];
+                      // Use a different color for the dismiss background
+                      return Dismissible(
+                        key: ValueKey(alert.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade600,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(
+                            Icons.done_all,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                        onDismissed: (direction) {
+                          // Note: In a real app, you'd likely update the DB/API here
+                          setState(() {
+                            alerts.removeWhere((a) => a.id == alert.id);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Alert "${alert.title}" resolved and removed.',
+                              ),
+                              backgroundColor: Colors.green.shade600,
+                            ),
+                          );
+                        },
+                        child: _buildAlertCard(alert),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }

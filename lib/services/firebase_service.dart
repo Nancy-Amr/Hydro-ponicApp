@@ -27,6 +27,39 @@ class FirebaseService {
   Future<void> sendSensorReadingToFirebase(SensorReading reading) async {
     await _firestore.collection('sensor_readings').add(reading.toMap());
   }
+  // Get user-specific settings from Firestore
+  Future<Map<String, dynamic>> getUserSettings(String userId) async {
+    final snapshot = await _firestore
+        .collection('user_settings')
+        .doc(userId)
+        .get();
+    return snapshot.data() ?? {};
+  }
+  /// Get user-specific profile data (name, phone, gender, etc.) from /users collection
+  Future<Map<String, dynamic>> getUserProfile(String uid) async {
+    final snapshot = await _firestore
+        .collection('users') // Targeting the new 'users' collection
+        .doc(uid)
+        .get();
+    return snapshot.data() ?? {};
+  }
+
+  /// Update user-specific profile data in /users collection
+  Future<void> updateUserProfile(
+      String uid, Map<String, dynamic> profileData) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .set(profileData, SetOptions(merge: true)); // Use merge: true to avoid overwriting the whole document
+  }
+  // Update user-specific settings in Firestore
+  Future<void> updateUserSettings(
+      String userId, Map<String, dynamic> settings) async {
+    await _firestore
+        .collection('user_settings')
+        .doc(userId)
+        .set(settings, SetOptions(merge: true));
+  }
 
   // === ACTUATOR CONTROL ===
 

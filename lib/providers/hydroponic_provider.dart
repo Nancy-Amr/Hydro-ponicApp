@@ -11,12 +11,15 @@ import 'dart:async';
 import '../services/firebase_service.dart'; 
 import '../models/actuator_log.dart';
 
+typedef UserThresholds = Map<String, double>;
 class HydroponicProvider with ChangeNotifier {
   // DAO instances (SQLite)
   final SensorDao _sensorDao = SensorDao();
   final ActuatorDao _actuatorDao = ActuatorDao();
   final AlertDao _alertDao = AlertDao();
   final SettingsDao _settingsDao = SettingsDao();
+
+  Map<String, double> _currentThresholds = {};
 
   // Service instance (Firebase)
   final FirebaseService _firebaseService = FirebaseService();
@@ -390,17 +393,32 @@ class HydroponicProvider with ChangeNotifier {
   List<Alert> get lowSeverityAlerts => _alerts.where((alert) => alert.isLowSeverity && !alert.acknowledged).toList();
 
   // Settings getters
-  double get tempMin => _getSettingAsDouble('temp_min', 18.0);
-  double get tempMax => _getSettingAsDouble('temp_max', 26.0);
-  double get humidityMin => _getSettingAsDouble('humidity_min', 50.0);
-  double get humidityMax => _getSettingAsDouble('humidity_max', 70.0);
-  double get phMin => _getSettingAsDouble('ph_min', 5.8);
-  double get phMax => _getSettingAsDouble('ph_max', 6.2);
-  double get waterLevelMin => _getSettingAsDouble('water_level_min', 60.0);
-  double get waterLevelMax => _getSettingAsDouble('water_level_max', 90.0);
-  double get lightIntensityMin => _getSettingAsDouble('light_intensity_min', 25000.0);
-  double get lightIntensityMax => _getSettingAsDouble('light_intensity_max', 40000.0);
+  double get tempMin => _getThreshold('temp_min', 18.0);
+  double get tempMax => _getThreshold('temp_max', 26.0);
+  double get humidityMin => _getThreshold('humidity_min', 50.0);
+  double get humidityMax => _getThreshold('humidity_max', 70.0);
+  double get phMin => _getThreshold('ph_min', 5.8);
+  double get phMax => _getThreshold('ph_max', 6.2);
+  double get waterLevelMin => _getThreshold('water_level_min', 60.0);
+  double get waterLevelMax => _getThreshold('water_level_max', 90.0);
+  double get lightIntensityMin => _getThreshold('light_intensity_min', 25000.0);
+  double get lightIntensityMax => _getThreshold('light_intensity_max', 40000.0);
 
+
+  void initializeThresholds(Map<String, double> thresholds) {
+    if (mapEquals(_currentThresholds, thresholds)) return; // Avoid unnecessary updates
+
+    _currentThresholds = thresholds;
+    
+    // Rerun automation if the thresholds were changed and automation is active
+    if (_autoMode && _currentThresholds.isNotEmpty) {
+      checkAutomationRules();
+    }
+    // Note: notifyListeners() is usually not called here because the ProxyProvider rebuilds widgets.
+  }
+  double _getThreshold(String key, double defaultValue) {
+    return _currentThresholds[key] ?? defaultValue;
+  }
   double _getSettingAsDouble(String key, double defaultValue) {
     try {
       final setting = _settings.firstWhere((s) => s.settingKey == key);

@@ -40,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     backgroundColor: Colors.green.shade50,
     appBar: AppBar(
       // FIX: Ensure title is always visible
-      title: const Text('Hydro-Smart Dashboard'), // Title kept short
+      title: const Text('Dashboard'), 
       automaticallyImplyLeading: false,
       backgroundColor: Colors.green.shade700,
       foregroundColor: Colors.white,
@@ -68,7 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
             const PopupMenuItem<String>(
-              value: '/analytics',
+              value: '/history',
               child: ListTile(
                 leading: Icon(Icons.show_chart),
                 title: Text('Analytics & History'),
